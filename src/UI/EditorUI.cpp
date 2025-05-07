@@ -127,65 +127,100 @@ void EditorUI::shutdown() {
 
 void EditorUI::renderMenuBar() {
     if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("Project")) {
-            if (ImGui::BeginMenu("File")) {
-                if (ImGui::MenuItem("New")) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("New")) {
+                if (ResourceManager::get().hasUnsavedChanges()) {
+                    showUnsavedPrompt = true;
+                    actionAfterPrompt = true;
+                } else {
+                    ResourceManager::get().clear();
+                    ProjectManager::setCurrentProjectPath(""); 
+                    ResourceManager::get().setUnsavedChanges(true);
+                }
+            }
+
+            if (ImGui::MenuItem("Open...")) {
+                std::string file = openFileDialog();
+                if (!file.empty()) {
                     if (ResourceManager::get().hasUnsavedChanges()) {
                         showUnsavedPrompt = true;
-                        actionAfterPrompt = true;
+                        actionAfterPrompt = false;
+                        ProjectManager::setTempLoadPath(file);  // <-- Store path to use after prompt
                     } else {
-                        ResourceManager::get().clear();
-                        ProjectManager::setCurrentProjectPath(""); 
-                        ResourceManager::get().setUnsavedChanges(true);
+                        ProjectManager::loadProject(file);
                     }
                 }
+            }
 
-                if (ImGui::MenuItem("Open...")) {
-                    std::string file = openFileDialog();
-                    if (!file.empty()) {
-                        if (ResourceManager::get().hasUnsavedChanges()) {
-                            showUnsavedPrompt = true;
-                            actionAfterPrompt = false;
-                            ProjectManager::setTempLoadPath(file);  // <-- Store path to use after prompt
-                        } else {
-                            ProjectManager::loadProject(file);
-                        }
-                    }
+            if (ImGui::MenuItem("Save")) {
+                std::string path = ProjectManager::getCurrentProjectPath();
+                if (path.empty()) {
+                    path = saveFileDialog();
+                    if (path.empty()) return;  // Cancelled
+                    ProjectManager::setCurrentProjectPath(path);
                 }
+            
+                ProjectManager::save();
+                ResourceManager::get().setUnsavedChanges(false);
+            }
 
-                if (ImGui::MenuItem("Save")) {
-                    std::string path = ProjectManager::getCurrentProjectPath();
-                    if (path.empty()) {
-                        path = saveFileDialog();
-                        if (path.empty()) return;  // Cancelled
-                        ProjectManager::setCurrentProjectPath(path);
-                    }
-                
-                    ProjectManager::save();
+            if (ImGui::MenuItem("Save As...")) {
+                std::string file = saveFileDialog();
+                if (!file.empty()) {
+                    ProjectManager::saveProjectToFile(file);  // use the full path
+                    ProjectManager::setCurrentProjectPath(file);
                     ResourceManager::get().setUnsavedChanges(false);
                 }
+            }
 
-                if (ImGui::MenuItem("Save As...")) {
-                    std::string file = saveFileDialog();
-                    if (!file.empty()) {
-                        ProjectManager::saveProjectToFile(file);  // use the full path
-                        ProjectManager::setCurrentProjectPath(file);
-                        ResourceManager::get().setUnsavedChanges(false);
+            if (ImGui::BeginMenu("Import")) {
+                if (ImGui::MenuItem("Assets")) {
+                    if (ImGui::MenuItem("Text")) {
+                        // Import Text logic here
                     }
-                }
+                    if (ImGui::MenuItem("Character")) {
+                        // Import Character logic here
+                    }
+                    if (ImGui::MenuItem("Audio")) {
+                        // Import audio logic here
+                    }
 
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Export")) {
+                if (ImGui::MenuItem("Export Project")) {
+                    // Export project logic here
+                }
                 ImGui::EndMenu();
             }
 
-            if (ImGui::BeginMenu("System")) {
-                if (ImGui::MenuItem("UI Settings")) {
-                    // Theme toggle or scaling coming soon
-                }
-                ImGui::EndMenu();
-            }
-
-            ImGui::EndMenu();  // End "Project"
+            ImGui::EndMenu(); 
         }
+
+        if (ImGui::BeginMenu("Edit")) {
+            if (ImGui::MenuItem("Undo")) {
+                // Undo logic here
+            }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Select")) {
+            if (ImGui::MenuItem("Select All")) {
+                // Undo logic here
+            }
+            ImGui::EndMenu();
+        }
+
+
+        if (ImGui::BeginMenu("View")) {
+            if (ImGui::MenuItem("Appearance")) {
+                // Theme toggle or scaling coming soon
+            }
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("Run")) {
             if (ImGui::MenuItem("Preview Scene")) {
                 // Start preview mode here
