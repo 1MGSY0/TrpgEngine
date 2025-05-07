@@ -1,27 +1,36 @@
 #include "EditorUI.h"
-#include "Panels/TextPanel.h"
-#include "Panels/CharactersPanel.h"
-#include "Panels/AudioPanel.h"
+#include "UI/Panels/TextPanel.h"
+#include "UI/Panels/CharactersPanel.h"
+#include "UI/Panels/AudioPanel.h"
+#include "UI/Panels/ProjectPanel.h"
+#include "UI/IPanel.h"
+
 #include "Project/ProjectManager.h"
 #include "Project/ResourceManager.h"
+#include "ImGUIUtils/ImGuiUtils.h"
 
 #include <Windows.h>
-#include <GL/gl.h>
 #include <GLFW/glfw3.h>
-
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 
 #include <iostream>
+#include <memory>
+
+static std::string saveStatus;
+static bool showUnsavedPrompt = false;
+static bool actionAfterPrompt = false;
 
 EditorUI::EditorUI(GLFWwindow* window) : m_window(window) {}
-static std::string saveStatus;
+
+EditorUI::~EditorUI() {
+    shutdown();
+}
 
 void EditorUI::init() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    
     ImGuiIO& io = ImGui::GetIO();
     
     io.Fonts->Clear();
@@ -29,6 +38,8 @@ void EditorUI::init() {
         std::cerr << "Failed to load font: assets/fonts/InterVariable.ttf" << std::endl;
     }
     io.FontGlobalScale = 1.0f; 
+
+    applyCustomDarkTheme(); // from ImGuiUtils
     
     ImGuiStyle& style = ImGui::GetStyle();
     ImVec4* colors = style.Colors;
@@ -55,14 +66,19 @@ void EditorUI::init() {
     style.ScrollbarRounding = 4.0f;
     style.GrabRounding      = 3.0f;
     style.TabRounding       = 3.0f;
-    style.ScaleAllSizes(1.5f);
+    style.ScaleAllSizes(3.0f);
 
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
+
+    //registerPanel(std::make_shared<TextPanel>());
+    //registerPanel(std::make_shared<CharactersPanel>());
+    //registerPanel(std::make_shared<AudioPanel>());
+    registerPanel(std::make_shared<ProjectPanel>());
 }
 
-EditorUI::~EditorUI() {
-    shutdown();  
+void EditorUI::registerPanel(std::shared_ptr<IPanel> panel) {
+    m_panels.push_back(panel);
 }
 
 void EditorUI::beginFrame() {
@@ -75,61 +91,161 @@ void EditorUI::beginFrame() {
 void EditorUI::render() {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
-                             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_MenuBar |
-                             ImGuiWindowFlags_NoBringToFrontOnFocus |
-                             ImGuiWindowFlags_NoSavedSettings;
+    ImGuiWindowFlags flags =
+        ImGuiWindowFlags_MenuBar |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoBringToFrontOnFocus |
+        ImGuiWindowFlags_NoSavedSettings;
     
-    ImGui::Begin("##MainWindow", nullptr, flags); 
-    
-    renderMenuBar();  
-    renderTabs();     
+    ImGui::Begin("##MainWindow", nullptr, flags);
+        renderMenuBar();
+        showUnsavedChangesPopup();
+        renderTabs();
     ImGui::End();
 }
 
+void EditorUI::endFrame() {
+    ImGui::Render();
+    int display_w, display_h;
+    glfwGetFramebufferSize(m_window, &display_w, &display_h);
+    glViewport(0, 0, display_w, display_h);
+
+    glClearColor(0.05f, 0.05f, 0.06f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    glfwSwapBuffers(m_window);
+}
+
+void EditorUI::shutdown() {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+}
+
 void EditorUI::renderMenuBar() {
-    static std::string saveStatus;
-
     if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("New Project")) {
-                ProjectManager::setCurrentProjectPath("Projects/NewProject");
-                ResourceManager::get().clear(); // Clears current assets
-            }
-            
-            if (ImGui::MenuItem("Save Project")) {
-                std::string dir = ProjectManager::getCurrentProjectPath();
-                if (dir.empty()) dir = "Projects/NewProject";
-                ProjectManager::saveProject(dir);
-            }
-            
-            if (ImGui::MenuItem("Load Project")) {
-                ProjectManager::loadProject("Projects/NewProject/project.trpgproj");
-            }
-            ImGui::EndMenu();
-        }
+        if (ImGui::BeginMenu("Project")) {
+            if (ImGui::BeginMenu("File")) {
+                if (ImGui::MenuItem("New")) {
+                    if (ResourceManager::get().hasUnsavedChanges()) {
+                        showUnsavedPrompt = true;
+                        actionAfterPrompt = true;
+                    } else {
+                        ResourceManager::get().clear();
+                        ProjectManager::setCurrentProjectPath(""); 
+                        ResourceManager::get().setUnsavedChanges(true);
+                    }
+                }
 
-        if (ImGui::BeginMenu("System")) {
-            if (ImGui::MenuItem("UI Settings")) {
-                // TODO: Trigger UI settings window
-            }
-            ImGui::EndMenu();
-        }
+                if (ImGui::MenuItem("Open...")) {
+                    std::string file = openFileDialog();
+                    if (!file.empty()) {
+                        if (ResourceManager::get().hasUnsavedChanges()) {
+                            showUnsavedPrompt = true;
+                            actionAfterPrompt = false;
+                            ProjectManager::setTempLoadPath(file);  // <-- Store path to use after prompt
+                        } else {
+                            ProjectManager::loadProject(file);
+                        }
+                    }
+                }
 
+                if (ImGui::MenuItem("Save")) {
+                    std::string path = ProjectManager::getCurrentProjectPath();
+                    if (path.empty()) {
+                        path = saveFileDialog();
+                        if (path.empty()) return;  // Cancelled
+                        ProjectManager::setCurrentProjectPath(path);
+                    }
+                
+                    ProjectManager::save();
+                    ResourceManager::get().setUnsavedChanges(false);
+                }
+
+                if (ImGui::MenuItem("Save As...")) {
+                    std::string file = saveFileDialog();
+                    if (!file.empty()) {
+                        ProjectManager::saveProjectToFile(file);  // use the full path
+                        ProjectManager::setCurrentProjectPath(file);
+                        ResourceManager::get().setUnsavedChanges(false);
+                    }
+                }
+
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("System")) {
+                if (ImGui::MenuItem("UI Settings")) {
+                    // Theme toggle or scaling coming soon
+                }
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMenu();  // End "Project"
+        }
         if (ImGui::BeginMenu("Run")) {
             if (ImGui::MenuItem("Preview Scene")) {
-                // TODO: Call GameLogicSystem preview
+                // Start preview mode here
             }
             ImGui::EndMenu();
         }
 
         ImGui::EndMenuBar();
     }
+}
 
-    if (!saveStatus.empty()) {
-        ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.5f, 1.0f), "%s", saveStatus.c_str());
+
+void EditorUI::showUnsavedChangesPopup() {
+    if (showUnsavedPrompt) {
+        ImGui::OpenPopup("Unsaved Changes");
+    }
+
+    if (ImGui::BeginPopupModal("Unsaved Changes", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("You have unsaved changes.\nSave before continuing?\n\n");
+        ImGui::Separator();
+
+        if (ImGui::Button("Save and Continue")) {
+            std::string dir = ProjectManager::getCurrentProjectPath();
+            if (dir.empty()) dir = "Projects/NewProject";
+            ProjectManager::saveProjectToFile(dir);
+            ResourceManager::get().setUnsavedChanges(false);
+        
+            if (actionAfterPrompt) {
+                ResourceManager::get().clear();
+            } else {
+                ProjectManager::loadProject(ProjectManager::getTempLoadPath());
+            }
+        
+            showUnsavedPrompt = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Discard Changes")) {
+            ResourceManager::get().setUnsavedChanges(false);
+
+            if (actionAfterPrompt)
+                ResourceManager::get().clear();
+            else
+                ProjectManager::loadProject(ProjectManager::getTempLoadPath());
+
+            showUnsavedPrompt = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            showUnsavedPrompt = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
     }
 }
+
 
 void EditorUI::renderTabs() {
 
@@ -152,21 +268,3 @@ void EditorUI::renderTabs() {
     }
 }
 
-void EditorUI::endFrame() {
-    ImGui::Render();
-    int display_w, display_h;
-    glfwGetFramebufferSize(m_window, &display_w, &display_h);
-    glViewport(0, 0, display_w, display_h);
-
-    glClearColor(0.05f, 0.05f, 0.06f, 1.0f); // slightly darker, less eye strain
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    glfwSwapBuffers(m_window);
-}
-
-void EditorUI::shutdown() {
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-}

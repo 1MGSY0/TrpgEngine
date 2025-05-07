@@ -1,7 +1,13 @@
 {
     "meta": {
         "name": "Untitled Project",
-        "saved_at": 1746631448,
+        "saved_at": 1746642736,
         "version": "0.1"
-    }
+    },
+    "texts": [
+        {
+            "content": "Hello",
+            "name": "D1"
+        }
+    ]
 }

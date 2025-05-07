@@ -32,3 +32,12 @@ void ResourceManager::clear() {
     m_textAssets.clear();
     m_audioAssets.clear();
 }
+
+static bool s_unsavedChanges = false;
+
+bool ResourceManager::hasUnsavedChanges() const {
+    return s_unsavedChanges;
+}
+void ResourceManager::setUnsavedChanges(bool changed) {
+    s_unsavedChanges = changed;
+}

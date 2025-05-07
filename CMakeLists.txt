@@ -23,6 +23,7 @@ link_directories(thirdparty/glfw/lib-vc2022)
 add_executable(TRPGEngine
     src/main.cpp
     src/Core/Application.cpp
+    src/ImGUIUtils/ImGuiUtils.cpp
 
     src/Assets/Character.cpp
     src/Assets/TextAsset.cpp
@@ -33,6 +34,7 @@ add_executable(TRPGEngine
     src/UI/Panels/TextPanel.cpp
     src/UI/Panels/CharactersPanel.cpp
     src/UI/Panels/AudioPanel.cpp
+    src/UI/Panels/ProjectPanel.cpp
     src/UI/EditorUI.cpp
 
     thirdparty/imgui/imgui.cpp

@@ -9,6 +9,8 @@
 class ResourceManager {
 public:
     static ResourceManager& get();
+    bool hasUnsavedChanges() const;
+    void setUnsavedChanges(bool changed);
     void clear();
 
     void addCharacter(std::shared_ptr<Character> character);

@@ -3,40 +3,56 @@
 #include "Assets/TextAsset.h"
 #include "Assets/Character.h"
 #include "Assets/AudioAsset.h"
+
 #include <json.hpp>
 #include <fstream>
+#include <filesystem>
 
 using json = nlohmann::json;
 
-bool ProjectManager::saveProject(const std::string& directory) {
-    json j;
+std::string ProjectManager::s_currentProjectPath = "";
+std::string ProjectManager::s_tempLoadPath = "";
 
+static std::string ensureTrpgExtension(const std::string& path) {
+    std::filesystem::path p(path);
+    if (p.extension() != ".trpgproj") {
+        return p.string() + ".trpgproj";
+    }
+    return p.string();
+}
+
+bool ProjectManager::saveProjectToFile(const std::string& filePath) {
+    const std::string finalPath = ensureTrpgExtension(filePath);
+
+    json j;
     auto& rm = ResourceManager::get();
+
     for (auto& t : rm.getTexts())
         j["texts"].push_back(t->toJson());
-
     for (auto& c : rm.getCharacters())
         j["characters"].push_back(c->toJson());
-
     for (auto& a : rm.getAudios())
         j["audio"].push_back(a->toJson());
 
     // Project metadata
     j["meta"] = {
-        {"name", "Untitled Project"},
+        {"name", std::filesystem::path(finalPath).stem().string()},
         {"saved_at", time(nullptr)},
         {"version", "0.1"}
     };
 
-    std::filesystem::create_directories(directory);
-    std::ofstream file(directory + "/project.trpgproj");
+    std::ofstream file(finalPath);
     if (!file.is_open()) return false;
 
     file << j.dump(4);
     file.close();
 
-    setCurrentProjectPath(directory);
     return true;
+}
+
+bool ProjectManager::save() {
+    if (s_currentProjectPath.empty()) return false;
+    return saveProjectToFile(s_currentProjectPath);
 }
 
 bool ProjectManager::loadProject(const std::string& filePath) {
@@ -48,8 +64,6 @@ bool ProjectManager::loadProject(const std::string& filePath) {
     file.close();
 
     auto& rm = ResourceManager::get();
-
-    // Clear previous project (optional)
     rm.clear();
 
     if (j.contains("texts")) {
@@ -67,16 +81,23 @@ bool ProjectManager::loadProject(const std::string& filePath) {
             rm.addAudio(AudioAsset::fromJson(a));
     }
 
-    setCurrentProjectPath(std::filesystem::path(filePath).parent_path().string());
+    setCurrentProjectPath(filePath);
+    ResourceManager::get().setUnsavedChanges(false);
     return true;
 }
 
-
-std::string ProjectManager::s_currentProjectPath = "";
-
-void ProjectManager::setCurrentProjectPath(const std::string& path) {
-    s_currentProjectPath = path;
+void ProjectManager::setCurrentProjectPath(const std::string& filePath) {
+    s_currentProjectPath = ensureTrpgExtension(filePath);
 }
+
 std::string ProjectManager::getCurrentProjectPath() {
     return s_currentProjectPath;
+}
+
+void ProjectManager::setTempLoadPath(const std::string& filePath) {
+    s_tempLoadPath = ensureTrpgExtension(filePath);
+}
+
+std::string ProjectManager::getTempLoadPath() {
+    return s_tempLoadPath;
 }
