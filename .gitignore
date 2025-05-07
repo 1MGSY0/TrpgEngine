@@ -1,0 +1,22 @@
+# Build output
+/build/
+*.exe
+*.pdb
+*.ilk
+*.obj
+*.exp
+*.lib
+
+# CMake + Conan cache
+CMakePresets.json
+conanfile.lock
+*.cmake
+*.bat
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# OS junk
+.DS_Store
+Thumbs.db
