@@ -30,9 +30,11 @@ add_executable(TRPGEngine
     src/Project/ResourceManager.cpp
     src/Project/ProjectManager.cpp
 
-    src/UI/Panels/TextPanel.cpp
-    src/UI/Panels/CharactersPanel.cpp
-    src/UI/Panels/AudioPanel.cpp
+    src/UI/ScenePanel/ScenePanel.cpp
+
+    src/UI/AssetPanels/TextPanel.cpp
+    src/UI/AssetPanels/CharactersPanel.cpp
+    src/UI/AssetPanels/AudioPanel.cpp
     src/UI/EditorUI.cpp
 
     thirdparty/imgui/imgui.cpp
