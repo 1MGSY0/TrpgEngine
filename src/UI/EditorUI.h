@@ -12,7 +12,9 @@ public:
 
     void init();
     void beginFrame();
-    void render(); 
+    void render();
+    void initDockLayout();
+
     void endFrame();
     void shutdown();
     bool shouldClose();
@@ -20,9 +22,14 @@ public:
 
 private:
     GLFWwindow* m_window;
+
+    bool m_shouldBuildDockLayout = false;
     std::vector<std::shared_ptr<IPanel>> m_panels;
-    
+
     void renderTabs(); 
+    void renderFlowTabs();
+    void renderSceneTabs();
+    void renderInspectorTabs();
     void renderMenuBar();  
     void showUnsavedChangesPopup();
     
