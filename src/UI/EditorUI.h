@@ -9,7 +9,7 @@ public:
 
     void init();
     void beginFrame();
-    void render();
+    void render(); 
     void endFrame();
     void shutdown();
     bool shouldClose();
@@ -17,5 +17,6 @@ public:
 private:
     GLFWwindow* m_window;
 
-    void renderTabs(); // Tabbed UI function
+    void renderTabs(); 
+    void renderMenuBar();  
 };

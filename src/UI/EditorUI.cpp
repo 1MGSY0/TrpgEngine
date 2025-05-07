@@ -72,58 +72,67 @@ void EditorUI::beginFrame() {
 }
 
 void EditorUI::render() {
-    ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Once);
-    ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, ImGuiCond_Once);
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse |
-                         ImGuiWindowFlags_NoBringToFrontOnFocus |
-                         ImGuiWindowFlags_NoSavedSettings;
-
-    ImGui::Begin("##MainWindow", nullptr, flags);
-    renderTabs();
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
+                             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_MenuBar |
+                             ImGuiWindowFlags_NoBringToFrontOnFocus |
+                             ImGuiWindowFlags_NoSavedSettings;
+    
+    ImGui::Begin("##MainWindow", nullptr, flags);  // No title, just content
+    
+    renderMenuBar();  // NEW
+    renderTabs();     // Keep this
     ImGui::End();
+}
+
+void EditorUI::renderMenuBar() {
+    static std::string saveStatus;
+
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Save Project")) {
+                if (ProjectManager::saveProject("MyProject.trpgproj")) {
+                    saveStatus = "Project saved.";
+                } else {
+                    saveStatus = "Save failed.";
+                }
+            }
+            if (ImGui::MenuItem("Load Project")) {
+                if (ProjectManager::loadProject("MyProject.trpgproj")) {
+                    saveStatus = "Project loaded.";
+                } else {
+                    saveStatus = "Load failed.";
+                }
+            }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("System")) {
+            if (ImGui::MenuItem("UI Settings")) {
+                // TODO: Trigger UI settings window
+            }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Run")) {
+            if (ImGui::MenuItem("Preview Scene")) {
+                // TODO: Call GameLogicSystem preview
+            }
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenuBar();
+    }
+
+    if (!saveStatus.empty()) {
+        ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.5f, 1.0f), "%s", saveStatus.c_str());
+    }
 }
 
 void EditorUI::renderTabs() {
 
     static std::string saveStatus;
-
-    ImGui::SetCursorPosX(ImGui::GetContentRegionAvail().x - 100); // Right-align
-    if (ImGui::BeginCombo("##SettingsCombo", "Setting", ImGuiComboFlags_NoArrowButton)) {
-        if (ImGui::Selectable("Load Project")) {
-            ProjectManager::loadProject("MyProject.trpgproj");
-            saveStatus = "Loaded project.";
-        }
-        if (ImGui::Selectable("Save Project")) {
-            ProjectManager::saveProject("MyProject.trpgproj");
-            saveStatus = "Saved project.";
-        }
-        if (ImGui::Selectable("UI Settings")) {
-            // (Optional) Add toggle/theme here
-        }
-        ImGui::EndCombo();
-    }
-
-    if (ImGui::Button("Save Project")) {
-        if (ProjectManager::saveProject("MyProject.trpgproj")) {
-            saveStatus = "Saved successfully.";
-        } else {
-            saveStatus = "Save failed.";
-        }
-    }
-
-    ImGui::SameLine();
-
-    if (ImGui::Button("Load Project")) {
-        if (ProjectManager::loadProject("MyProject.trpgproj")) {
-            saveStatus = "Loaded successfully.";
-        } else {
-            saveStatus = "Load failed.";
-        }
-    }
-
-    if (!saveStatus.empty()) {
-        ImGui::Text("%s", saveStatus.c_str());
-    }
 
     if (ImGui::BeginTabBar("MainTabs")) {
         if (ImGui::BeginTabItem("Text")) {

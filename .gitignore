@@ -5,7 +5,6 @@
 *.ilk
 *.obj
 *.exp
-*.lib
 
 # CMake + Conan cache
 CMakePresets.json
