@@ -8,7 +8,7 @@
 #include "UI/AssetPanels/TextPanel.h"
 #include "UI/AssetPanels/CharactersPanel.h"
 #include "UI/AssetPanels/AudioPanel.h"
-#include "UI/AssetPanels/ProjectPanel.h"
+#include "UI/Panels/ProjectPanel.h"
 #include "UI/IPanel.h"
 
 #include "Project/ProjectManager.h"
@@ -168,23 +168,23 @@ void EditorUI::initDockLayout() {
      ImGui::DockBuilderFinish(dockspace_id);
 }
 
-void EditorUI::renderMenuBar() {
-    static std::string saveStatus;
-    ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
-    ImGuiWindowFlags flags =
-        ImGuiWindowFlags_MenuBar |
-        ImGuiWindowFlags_NoCollapse |
-        ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoBringToFrontOnFocus |
-        ImGuiWindowFlags_NoSavedSettings;
+// void EditorUI::renderMenuBar() {
+//     static std::string saveStatus;
+//     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+//     ImGuiWindowFlags flags =
+//         ImGuiWindowFlags_MenuBar |
+//         ImGuiWindowFlags_NoCollapse |
+//         ImGuiWindowFlags_NoResize |
+//         ImGuiWindowFlags_NoMove |
+//         ImGuiWindowFlags_NoBringToFrontOnFocus |
+//         ImGuiWindowFlags_NoSavedSettings;
     
-    ImGui::Begin("##MainWindow", nullptr, flags);
-        renderMenuBar();
-        showUnsavedChangesPopup();
-        renderTabs();
-    ImGui::End();
-}
+//     ImGui::Begin("##MainWindow", nullptr, flags);
+//         renderMenuBar();
+//         showUnsavedChangesPopup();
+//         renderTabs();
+//     ImGui::End();
+// }
 
 void EditorUI::endFrame() {
     ImGui::Render();
