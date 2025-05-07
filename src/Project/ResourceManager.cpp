@@ -26,3 +26,18 @@ void ResourceManager::addAudio(std::shared_ptr<AudioAsset> audio) {
 const std::vector<std::shared_ptr<AudioAsset>>& ResourceManager::getAudios() const {
     return m_audioAssets;
 }
+
+void ResourceManager::clear() {
+    m_characters.clear();
+    m_textAssets.clear();
+    m_audioAssets.clear();
+}
+
+static bool s_unsavedChanges = false;
+
+bool ResourceManager::hasUnsavedChanges() const {
+    return s_unsavedChanges;
+}
+void ResourceManager::setUnsavedChanges(bool changed) {
+    s_unsavedChanges = changed;
+}
