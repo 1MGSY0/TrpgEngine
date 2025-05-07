@@ -9,10 +9,12 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # Add include and lib paths manually
 # Include GLFW and ImGui
-include_directories(
+include_directories(TRPGEngine PRIVATE
+    src
     thirdparty/glfw/include
     thirdparty/imgui
     thirdparty/imgui/backends
+    thirdparty/nlohmann
 )
 
 link_directories(thirdparty/glfw/lib-vc2022)
@@ -21,6 +23,17 @@ link_directories(thirdparty/glfw/lib-vc2022)
 add_executable(TRPGEngine
     src/main.cpp
     src/Core/Application.cpp
+
+    src/Assets/Character.cpp
+    src/Assets/TextAsset.cpp
+    src/Assets/AudioAsset.cpp
+    src/Project/ResourceManager.cpp
+    src/Project/ProjectManager.cpp
+
+    src/UI/Panels/TextPanel.cpp
+    src/UI/Panels/CharactersPanel.cpp
+    src/UI/Panels/AudioPanel.cpp
+    src/UI/EditorUI.cpp
 
     thirdparty/imgui/imgui.cpp
     thirdparty/imgui/imgui_demo.cpp
@@ -35,3 +48,7 @@ target_link_libraries(TRPGEngine
     glfw3
     opengl32
 )
+
+add_custom_command(TARGET TRPGEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:TRPGEngine>/assets)
