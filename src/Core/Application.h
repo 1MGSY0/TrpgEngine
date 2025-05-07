@@ -1,21 +1,20 @@
-#pragma once
-
-#include "../Engine/TrpgEngine.h"
-#include "../UI/EditorUI.h"
-#include "../Engine/EngineManager.h"
+#include <string>
+struct GLFWwindow;
 
 class Application {
 public:
     Application();
     ~Application();
-
-    bool initEngine();
     void run();
-    void quit();
 
 private:
-    EngineManager* m_engineManager;
-    EditorUI* m_editorUI;
+    GLFWwindow* m_window;
+    bool initWindow();
+    void mainLoop();
+    void shutdown();
 
-    bool m_running;
+    // UI functions
+    void initImGui();
+    void renderUI();
+    void cleanupImGui();
 };

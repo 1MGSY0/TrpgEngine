@@ -1,45 +1,89 @@
+#include "Application.h"
+#include <GLFW/glfw3.h>
 #include <iostream>
 
-#include "Application.h"
-#include "../UI/EditorUI.h"
-#include "../Engine/EngineManager.h" 
+// ImGui headers
+#include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
 
-
-Application::Application() {
-    m_engineManager = new EngineManager();
-    m_editorUI = new EditorUI();
-    m_running = false;
-}
+Application::Application() : m_window(nullptr) {}
 
 Application::~Application() {
-    delete m_editorUI;
-    delete m_engineManager;
+    shutdown();
 }
 
-bool Application::initEngine() {
-    return m_editorUI->init() && m_engineManager->initializeEngine();
+bool Application::initWindow() {
+    if (!glfwInit()) return false;
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    m_window = glfwCreateWindow(1280, 720, "TRPG Editor", nullptr, nullptr);
+    if (!m_window) return false;
+
+    glfwMakeContextCurrent(m_window);
+    glfwSwapInterval(1); // Enable vsync
+    return true;
+}
+
+void Application::initImGui() {
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(m_window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
+}
+
+void Application::renderUI() {
+    ImGui::Begin("TRPG Engine UI");
+    ImGui::Text("This is your in-editor UI.");
+    if (ImGui::Button("Exit")) {
+        glfwSetWindowShouldClose(m_window, 1);
+    }
+    ImGui::End();
+}
+
+void Application::cleanupImGui() {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 }
 
 void Application::run() {
-    if (!initEngine()) {
-        std::cerr << "Failed to initialize engine\n";
+    if (!initWindow()) {
+        std::cerr << "Window init failed\n";
         return;
     }
 
-    m_running = true;
+    initImGui();
 
-    while (!m_editorUI->shouldClose()) {
-        m_editorUI->beginFrame();
+    while (!glfwWindowShouldClose(m_window)) {
+        glfwPollEvents();
 
-        m_editorUI->render();              // Renders the ImGui UI
-        m_engineManager->tick();           // Updates engine (empty for now)
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
 
-        m_editorUI->endFrame();
+        renderUI();
+
+        ImGui::Render();
+        int w, h;
+        glfwGetFramebufferSize(m_window, &w, &h);
+        glViewport(0, 0, w, h);
+        glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        glfwSwapBuffers(m_window);
     }
 
-    quit();
+    cleanupImGui();
+    shutdown();
 }
 
-void Application::quit() {
-    m_running = false;
+void Application::shutdown() {
+    if (m_window) {
+        glfwDestroyWindow(m_window);
+        m_window = nullptr;
+    }
+    glfwTerminate();
 }

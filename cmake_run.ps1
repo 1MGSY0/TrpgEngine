@@ -1,19 +1,31 @@
-Write-Host "Cleaning build directory..."
-Remove-Item -Recurse -Force build, CMakeCache.txt, CMakeFiles -ErrorAction SilentlyContinue
+param(
+    [ValidateSet("Debug", "Release")]
+    [string]$BuildType = "Debug"
+)
 
-Write-Host "Running CMake configuration..."
-cmake -G "Visual Studio 17 2022" -A x64 -S . -B build
+Write-Host "Cleaning previous build for $BuildType..."
+Remove-Item -Recurse -Force build -ErrorAction SilentlyContinue
 
-Write-Host "Building project in Debug mode..."
-cmake --build build --config Debug --verbose
+Write-Host "`nConfiguring project with CMake ($BuildType)..."
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 
-# Confirm .exe exists before trying to run
-$exePath = Join-Path -Path ".\build\Debug" -ChildPath "TRPGEngine.exe"
-if (Test-Path $exePath) {
-    Write-Host "Launching TRPG Engine..."
-    Start-Process $exePath
-} else {
-    Write-Host "TRPGEngine.exe not found. Build likely failed."
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "CMake configuration failed." -ForegroundColor Red
+    exit 1
 }
 
-Write-Host "`nDone. Everything is clean, built, and running."
+Write-Host "`nBuilding project in $BuildType mode..."
+cmake --build build --config $BuildType
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Build failed." -ForegroundColor Red
+    exit 1
+}
+
+$exePath = ".\build\$BuildType\TRPGEngine.exe"
+if (Test-Path $exePath) {
+    Write-Host "`nLaunching engine ($BuildType)..."
+    Start-Process $exePath
+} else {
+    Write-Host "`nBuild succeeded, but EXE not found." -ForegroundColor Yellow
+}
