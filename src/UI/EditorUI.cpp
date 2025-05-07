@@ -3,6 +3,7 @@
 #include "Panels/CharactersPanel.h"
 #include "Panels/AudioPanel.h"
 #include "Project/ProjectManager.h"
+#include "Project/ResourceManager.h"
 
 #include <Windows.h>
 #include <GL/gl.h>
@@ -79,10 +80,10 @@ void EditorUI::render() {
                              ImGuiWindowFlags_NoBringToFrontOnFocus |
                              ImGuiWindowFlags_NoSavedSettings;
     
-    ImGui::Begin("##MainWindow", nullptr, flags);  // No title, just content
+    ImGui::Begin("##MainWindow", nullptr, flags); 
     
-    renderMenuBar();  // NEW
-    renderTabs();     // Keep this
+    renderMenuBar();  
+    renderTabs();     
     ImGui::End();
 }
 
@@ -91,19 +92,19 @@ void EditorUI::renderMenuBar() {
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Save Project")) {
-                if (ProjectManager::saveProject("MyProject.trpgproj")) {
-                    saveStatus = "Project saved.";
-                } else {
-                    saveStatus = "Save failed.";
-                }
+            if (ImGui::MenuItem("New Project")) {
+                ProjectManager::setCurrentProjectPath("Projects/NewProject");
+                ResourceManager::get().clear(); // Clears current assets
             }
+            
+            if (ImGui::MenuItem("Save Project")) {
+                std::string dir = ProjectManager::getCurrentProjectPath();
+                if (dir.empty()) dir = "Projects/NewProject";
+                ProjectManager::saveProject(dir);
+            }
+            
             if (ImGui::MenuItem("Load Project")) {
-                if (ProjectManager::loadProject("MyProject.trpgproj")) {
-                    saveStatus = "Project loaded.";
-                } else {
-                    saveStatus = "Load failed.";
-                }
+                ProjectManager::loadProject("Projects/NewProject/project.trpgproj");
             }
             ImGui::EndMenu();
         }

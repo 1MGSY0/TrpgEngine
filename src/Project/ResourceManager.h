@@ -9,6 +9,7 @@
 class ResourceManager {
 public:
     static ResourceManager& get();
+    void clear();
 
     void addCharacter(std::shared_ptr<Character> character);
     const std::vector<std::shared_ptr<Character>>& getCharacters() const;
