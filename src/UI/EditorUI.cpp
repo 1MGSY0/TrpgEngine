@@ -86,9 +86,6 @@ void EditorUI::init() {
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
-    //registerPanel(std::make_shared<TextPanel>());
-    //registerPanel(std::make_shared<CharactersPanel>());
-    //registerPanel(std::make_shared<AudioPanel>());
     registerPanel(std::make_shared<ProjectPanel>());
 }
 
@@ -152,11 +149,11 @@ void EditorUI::initDockLayout() {
     // Split right (Inspector)
     ImGuiID dock_right = ImGui::DockBuilderSplitNode(main_dock_id, ImGuiDir_Right, 0.20f, nullptr, &main_dock_id);
 
-    // Split remaining horizontally → top (Scene+Flow), bottom (Assets)
+    // Split remaining horizontally top (Scene+Flow), bottom (Assets)
     ImGuiID dock_bottom = ImGui::DockBuilderSplitNode(main_dock_id, ImGuiDir_Down, 0.30f, nullptr, &main_dock_id);
     ImGuiID dock_top = main_dock_id;
 
-    // Split top horizontally → left (Flow), center (Scene)
+    // Split top horizontally left (Flow), center (Scene)
     ImGuiID dock_left = ImGui::DockBuilderSplitNode(dock_top, ImGuiDir_Left, 0.25f, nullptr, &dock_top);
     ImGuiID dock_center = dock_top;
 
@@ -170,6 +167,8 @@ void EditorUI::initDockLayout() {
 }
 
 void EditorUI::endFrame() {
+    if (!ImGui::GetCurrentContext())
+        return;  // avoid draw calls if ImGui wasn't properly initialized
     ImGui::Render();
     int display_w, display_h;
     glfwGetFramebufferSize(m_window, &display_w, &display_h);
@@ -220,12 +219,14 @@ void EditorUI::renderMenuBar() {
                 std::string path = ProjectManager::getCurrentProjectPath();
                 if (path.empty()) {
                     path = saveFileDialog();
-                    if (path.empty()) return;  // Cancelled
-                    ProjectManager::setCurrentProjectPath(path);
+                    if (path.empty()) {
+                        // just skip save, do nothing
+                    } else {
+                        ProjectManager::setCurrentProjectPath(path);
+                        ProjectManager::save();
+                        ResourceManager::get().setUnsavedChanges(false);
+                    }
                 }
-            
-                ProjectManager::save();
-                ResourceManager::get().setUnsavedChanges(false);
             }
 
             if (ImGui::MenuItem("Save As...")) {

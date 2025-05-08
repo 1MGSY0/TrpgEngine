@@ -10,8 +10,16 @@
 Application::Application()
     : m_window(nullptr), m_editorUI(nullptr) {}
 
-Application::~Application() {
-    shutdown();
+    Application::~Application() {
+        if (m_window) {
+            glfwDestroyWindow(m_window);  
+            m_window = nullptr;
+        }
+        shutdown();
+    }
+
+void Application::shutdown() {
+    glfwTerminate();
 }
 
 bool Application::initWindow() {
@@ -41,33 +49,28 @@ bool Application::initWindow() {
 void Application::run() {
     if (!initWindow()) return;
 
-    m_editorUI = new EditorUI(m_window);  
-    m_editorUI->init();  
+    m_editorUI = new EditorUI(m_window);
+    m_editorUI->init();
 
     initEngine();
     mainLoop();
+
+    if (m_editorUI) {
+        delete m_editorUI;
+        m_editorUI = nullptr;
+    }
 }
 
 void Application::mainLoop() {
     while (!glfwWindowShouldClose(m_window)) {
-        glfwPollEvents();
 
         m_editorUI->beginFrame();
         m_editorUI->render();
         m_editorUI->endFrame();
 
-        glfwSwapBuffers(m_window);
     }
-    delete m_editorUI;
 }
 
-void Application::shutdown() {
-    if (m_window) {
-        glfwDestroyWindow(m_window);
-        m_window = nullptr;
-    }
-    glfwTerminate();
-}
 
 void Application::initEngine() {
     std::cout << "Engine Initialized (stub)\n";
