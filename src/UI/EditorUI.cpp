@@ -52,7 +52,7 @@ void EditorUI::init() {
     if (!io.Fonts->AddFontFromFileTTF("assets/fonts/InterVariable.ttf", 16.0f)) {
         std::cerr << "Failed to load font: assets/fonts/InterVariable.ttf" << std::endl;
     }
-    io.FontGlobalScale = 1.0f; 
+    io.FontGlobalScale = 1.3f; 
 
     applyCustomDarkTheme(); // from ImGuiUtils
     
@@ -131,6 +131,7 @@ void EditorUI::render() {
 
     // Panels
     renderMenuBar();
+    showUnsavedChangesPopup();
     renderFlowTabs();
     renderSceneTabs();
     renderInspectorTabs();
@@ -168,24 +169,6 @@ void EditorUI::initDockLayout() {
      ImGui::DockBuilderFinish(dockspace_id);
 }
 
-// void EditorUI::renderMenuBar() {
-//     static std::string saveStatus;
-//     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
-//     ImGuiWindowFlags flags =
-//         ImGuiWindowFlags_MenuBar |
-//         ImGuiWindowFlags_NoCollapse |
-//         ImGuiWindowFlags_NoResize |
-//         ImGuiWindowFlags_NoMove |
-//         ImGuiWindowFlags_NoBringToFrontOnFocus |
-//         ImGuiWindowFlags_NoSavedSettings;
-    
-//     ImGui::Begin("##MainWindow", nullptr, flags);
-//         renderMenuBar();
-//         showUnsavedChangesPopup();
-//         renderTabs();
-//     ImGui::End();
-// }
-
 void EditorUI::endFrame() {
     ImGui::Render();
     int display_w, display_h;
@@ -210,6 +193,7 @@ void EditorUI::renderMenuBar() {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New")) {
                 if (ResourceManager::get().hasUnsavedChanges()) {
+                    ImGui::OpenPopup("Unsaved Changes");
                     showUnsavedPrompt = true;
                     actionAfterPrompt = true;
                 } else {
@@ -254,7 +238,7 @@ void EditorUI::renderMenuBar() {
             }
 
             if (ImGui::BeginMenu("Import")) {
-                if (ImGui::MenuItem("Assets")) {
+                if (ImGui::BeginMenu("Assets")) {
                     if (ImGui::MenuItem("Text")) {
                         // Import Text logic here
                     }
@@ -314,11 +298,7 @@ void EditorUI::renderMenuBar() {
 
 
 void EditorUI::showUnsavedChangesPopup() {
-    if (showUnsavedPrompt) {
-        ImGui::OpenPopup("Unsaved Changes");
-    }
-
-    if (ImGui::BeginPopupModal("Unsaved Changes", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+    if (ImGui::BeginPopupModal("Unsaved Changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("You have unsaved changes.\nSave before continuing?\n\n");
         ImGui::Separator();
 
@@ -327,13 +307,12 @@ void EditorUI::showUnsavedChangesPopup() {
             if (dir.empty()) dir = "Projects/NewProject";
             ProjectManager::saveProjectToFile(dir);
             ResourceManager::get().setUnsavedChanges(false);
-        
-            if (actionAfterPrompt) {
+
+            if (actionAfterPrompt)
                 ResourceManager::get().clear();
-            } else {
+            else
                 ProjectManager::loadProject(ProjectManager::getTempLoadPath());
-            }
-        
+
             showUnsavedPrompt = false;
             ImGui::CloseCurrentPopup();
         }
@@ -359,6 +338,7 @@ void EditorUI::showUnsavedChangesPopup() {
 
         ImGui::EndPopup();
     }
+
 }
 
 void EditorUI::renderFlowTabs() {
