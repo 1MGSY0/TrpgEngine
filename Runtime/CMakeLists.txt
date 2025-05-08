@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.16)
 project(TRPGRuntime)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -9,5 +9,7 @@ add_executable(TRPGRuntime
     DataLoader.cpp
 )
 
-# If json.hpp is not system-wide
-target_include_directories(TRPGRuntime PRIVATE ../external/json)
+target_include_directories(TRPGRuntime PRIVATE
+    ${CMAKE_SOURCE_DIR}/packages/nlohmann
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)

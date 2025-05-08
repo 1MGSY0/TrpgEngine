@@ -54,7 +54,7 @@ void EditorUI::init() {
     if (!io.Fonts->AddFontFromFileTTF("assets/fonts/InterVariable.ttf", 16.0f)) {
         std::cerr << "Failed to load font: assets/fonts/InterVariable.ttf" << std::endl;
     }
-    io.FontGlobalScale = 1.3f; 
+    io.FontGlobalScale = 1.5f; 
 
     applyCustomDarkTheme(); // from ImGuiUtils
     
@@ -83,7 +83,7 @@ void EditorUI::init() {
     style.ScrollbarRounding = 4.0f;
     style.GrabRounding      = 3.0f;
     style.TabRounding       = 3.0f;
-    style.ScaleAllSizes(3.0f);
+    style.ScaleAllSizes(2.0f);
 
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
@@ -242,12 +242,28 @@ void EditorUI::renderMenuBar() {
             
             if (ImGui::BeginMenu("Build")) {
                 if (ImGui::MenuItem("Build Project")) {
-                    const std::string& path = ProjectManager::getCurrentProjectPath();
-                    if (!path.empty()) {
-                        BuildSystem::buildProject(path);
+                    const std::string& projectPath = ProjectManager::getCurrentProjectPath();
+            
+                    if (projectPath.empty()) {
+                        ImGui::OpenPopup("Missing Project Path");
+                    } else {
+                        std::string exportPath = openFileDialog();
+                        if (!exportPath.empty()) {
+                            bool success = BuildSystem::buildProject(projectPath, exportPath);
+                            saveStatus = success ? "Build successful." : "Build failed.";
+                        }
                     }
                 }
                 ImGui::EndMenu();
+            }
+            
+            if (ImGui::BeginPopupModal("Missing Project Path", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::Text("You must save the project before building.\n\n");
+                ImGui::Separator();
+                if (ImGui::Button("OK")) {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
             }
 
             if (ImGui::BeginMenu("Import")) {
@@ -351,6 +367,36 @@ void EditorUI::showUnsavedChangesPopup() {
         ImGui::EndPopup();
     }
 
+}
+
+void EditorUI::renderStatusBar() {
+    static float timeSinceStatus = 0.0f;
+
+    if (!saveStatus.empty()) {
+        timeSinceStatus += ImGui::GetIO().DeltaTime;
+        if (timeSinceStatus > 5.0f) {
+            saveStatus.clear();
+            timeSinceStatus = 0.0f;
+            return;
+        }
+    } else {
+        return;
+    }
+
+    ImVec2 windowSize = ImGui::GetWindowSize();
+    float statusHeight = ImGui::GetTextLineHeightWithSpacing() + 10.0f;
+
+    ImGui::SetCursorPosY(windowSize.y - statusHeight);
+    ImGui::Separator();
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5.0f);
+
+    ImGui::BeginChild("StatusBar", ImVec2(0, statusHeight), false,
+                      ImGuiWindowFlags_NoScrollbar |
+                      ImGuiWindowFlags_NoScrollWithMouse |
+                      ImGuiWindowFlags_NoDecoration);
+
+    ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.4f, 1.0f), "%s", saveStatus.c_str());
+    ImGui::EndChild();
 }
 
 void EditorUI::renderFlowTabs() {

@@ -1,10 +1,13 @@
 # Build output
 /build/
+/bin/
 *.exe
 *.pdb
 *.ilk
 *.obj
 *.exp
+*.user
+*.suo
 
 # CMake + Conan cache
 CMakePresets.json
@@ -15,6 +18,7 @@ conanfile.lock
 # VS Code
 .vscode/
 *.code-workspace
+/*.vcxproj
 
 # OS junk
 .DS_Store

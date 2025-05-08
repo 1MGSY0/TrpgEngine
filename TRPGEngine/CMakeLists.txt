@@ -2,23 +2,19 @@ cmake_minimum_required(VERSION 3.16)
 project(TRPGEngine)
 
 set(CMAKE_CXX_STANDARD 17)
-
-# Enforce static runtime (/MT or /MTd)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-
-# Add include and lib paths manually
-# Include GLFW and ImGui
-include_directories(TRPGEngine PRIVATE
-    src
-    thirdparty/glfw/include
-    thirdparty/imgui
-    thirdparty/imgui/backends
-    thirdparty/nlohmann
+# Include paths
+include_directories(
+    ${CMAKE_SOURCE_DIR}/packages/glfw/include
+    ${CMAKE_SOURCE_DIR}/packages/imgui
+    ${CMAKE_SOURCE_DIR}/packages/imgui/backends
+    ${CMAKE_SOURCE_DIR}/packages/nlohmann
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-link_directories(thirdparty/glfw/lib-vc2022)
-
+# Link GLFW lib
+link_directories(${CMAKE_SOURCE_DIR}/packages/glfw/lib-vc2022)
 
 add_executable(TRPGEngine
     src/main.cpp
@@ -40,13 +36,13 @@ add_executable(TRPGEngine
     src/UI/Panels/ProjectPanel.cpp
     src/UI/EditorUI.cpp
 
-    thirdparty/imgui/imgui.cpp
-    thirdparty/imgui/imgui_demo.cpp
-    thirdparty/imgui/imgui_draw.cpp
-    thirdparty/imgui/imgui_widgets.cpp
-    thirdparty/imgui/imgui_tables.cpp
-    thirdparty/imgui/backends/imgui_impl_glfw.cpp
-    thirdparty/imgui/backends/imgui_impl_opengl3.cpp
+    ${CMAKE_SOURCE_DIR}/packages/imgui/imgui.cpp
+    ${CMAKE_SOURCE_DIR}/packages/imgui/imgui_demo.cpp
+    ${CMAKE_SOURCE_DIR}/packages/imgui/imgui_draw.cpp
+    ${CMAKE_SOURCE_DIR}/packages/imgui/imgui_widgets.cpp
+    ${CMAKE_SOURCE_DIR}/packages/imgui/imgui_tables.cpp
+    ${CMAKE_SOURCE_DIR}/packages/imgui/backends/imgui_impl_glfw.cpp
+    ${CMAKE_SOURCE_DIR}/packages/imgui/backends/imgui_impl_opengl3.cpp
 )
 
 target_link_libraries(TRPGEngine
@@ -54,6 +50,8 @@ target_link_libraries(TRPGEngine
     opengl32
 )
 
+# Copy assets
 add_custom_command(TARGET TRPGEngine POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:TRPGEngine>/assets)
+    ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:TRPGEngine>/assets
+)

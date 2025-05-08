@@ -31,6 +31,7 @@ private:
     void renderSceneTabs();
     void renderInspectorTabs();
     void renderMenuBar();  
+    void renderStatusBar();
     void showUnsavedChangesPopup();
     
     

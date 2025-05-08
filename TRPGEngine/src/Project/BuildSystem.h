@@ -3,7 +3,7 @@
 
 class BuildSystem {
 public:
-    // Performs full build from projectPath → outputDirectory
+    // Performs full build from projectPath outputDirectory
     static bool buildProject(const std::string& projectPath, const std::string& outputDirectory);
 
 private:
