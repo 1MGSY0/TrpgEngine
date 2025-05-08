@@ -28,8 +28,10 @@ add_executable(TRPGEngine
     src/Assets/Character.cpp
     src/Assets/TextAsset.cpp
     src/Assets/AudioAsset.cpp
+
     src/Project/ResourceManager.cpp
     src/Project/ProjectManager.cpp
+    src/Project/BuildSystem.cpp
 
     src/UI/ScenePanel/ScenePanel.cpp
     src/UI/AssetPanels/TextPanel.cpp

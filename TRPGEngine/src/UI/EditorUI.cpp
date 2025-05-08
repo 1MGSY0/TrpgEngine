@@ -1,4 +1,4 @@
-#include "EditorUI.h"
+﻿#include "EditorUI.h"
 
 #include "AssetPanels/TextPanel.h"
 #include "AssetPanels/CharactersPanel.h"
@@ -13,6 +13,8 @@
 
 #include "Project/ProjectManager.h"
 #include "Project/ResourceManager.h"
+#include "Project/BuildSystem.h"
+#include "Project/RuntimeLauncher.h"
 #include "ImGUIUtils/ImGuiUtils.h"
 
 #include <Windows.h>
@@ -237,6 +239,16 @@ void EditorUI::renderMenuBar() {
                     ResourceManager::get().setUnsavedChanges(false);
                 }
             }
+            
+            if (ImGui::BeginMenu("Build")) {
+                if (ImGui::MenuItem("Build Project")) {
+                    const std::string& path = ProjectManager::getCurrentProjectPath();
+                    if (!path.empty()) {
+                        BuildSystem::buildProject(path);
+                    }
+                }
+                ImGui::EndMenu();
+            }
 
             if (ImGui::BeginMenu("Import")) {
                 if (ImGui::BeginMenu("Assets")) {
@@ -287,8 +299,7 @@ void EditorUI::renderMenuBar() {
         }
 
         if (ImGui::BeginMenu("Run")) {
-            if (ImGui::MenuItem("Preview Scene")) {
-                // Start preview mode here
+            if (ImGui::MenuItem("Run Project")) {
             }
             ImGui::EndMenu();
         }
