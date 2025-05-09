@@ -7,6 +7,12 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#include <Windows.h>
+
+#include "UI/ImGUIUtils/ImGuiUtils.h"
+
 Application::Application()
     : m_window(nullptr), m_editorUI(nullptr) {}
 
@@ -30,11 +36,9 @@ bool Application::initWindow() {
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-    
     glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+
     m_window = glfwCreateWindow(1280, 720, "TRPG Engine", nullptr, nullptr);
-    
     if (!m_window) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
@@ -42,7 +46,12 @@ bool Application::initWindow() {
     }
 
     glfwMakeContextCurrent(m_window);
-    glfwSwapInterval(1); // V-Sync
+    glfwSwapInterval(1); // Enable VSync
+
+    // Enable drag-and-drop on Windows
+    HWND hwnd = glfwGetWin32Window(m_window);
+    DragAcceptFiles(hwnd, TRUE);
+
     return true;
 }
 
@@ -62,12 +71,23 @@ void Application::run() {
 }
 
 void Application::mainLoop() {
-    while (!glfwWindowShouldClose(m_window)) {
+    HWND hwnd = glfwGetWin32Window(m_window);
 
+    while (!glfwWindowShouldClose(m_window)) {
+        // Poll Windows messages
+        MSG msg;
+        while (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
+            if (msg.message == WM_DROPFILES) {
+                handleOSFileDrop(msg.hwnd);
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        // Normal ImGui frame logic
         m_editorUI->beginFrame();
         m_editorUI->render();
         m_editorUI->endFrame();
-
     }
 }
 

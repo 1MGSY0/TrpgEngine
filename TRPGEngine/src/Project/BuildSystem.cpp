@@ -1,9 +1,9 @@
 #include "BuildSystem.h"
 #include "ProjectManager.h"
-#include "ResourceManager.h"
-#include "Assets/TextAsset.h"
-#include "Assets/Character.h"
-#include "Assets/AudioAsset.h"
+#include "Engine/Resources/ResourceManager.h"
+#include "Engine/Entity/Components/TextComponent.h"
+#include "Engine/Entity/Components/CharacterComponent.h"
+#include "Engine/Entity/Components/AudioComponent.h"
 
 #include <filesystem>
 #include <fstream>
@@ -22,37 +22,28 @@ bool BuildSystem::buildProject(const std::string& projectPath, const std::string
     }
 
     fs::create_directories(outputDirectory);
-    fs::path buildPath = fs::path(outputDirectory);
-
-    // Export data.json (texts, characters, audio)
     auto& rm = ResourceManager::get();
     json j;
 
-    for (auto& text : rm.getTexts())
+    for (auto& text : rm.getAllTexts())
         j["texts"].push_back(text->toJson());
 
-    for (auto& character : rm.getCharacters())
+    for (auto& character : rm.getAllCharacters())
         j["characters"].push_back(character->toJson());
 
-    for (auto& audio : rm.getAudios())
+    for (auto& audio : rm.getAllAudio())
         j["audio"].push_back(audio->toJson());
 
-    std::ofstream dataFile(buildPath / "data.json");
+    std::ofstream dataFile(fs::path(outputDirectory) / "data.json");
     if (!dataFile.is_open()) {
         std::cerr << "[BuildSystem] Failed to write data.json.\n";
         return false;
     }
 
     dataFile << j.dump(4);
-    dataFile.close();
     std::cout << "[BuildSystem] Exported data.json.\n";
 
-    // Copy asset files (e.g.images, audio files)
-    fs::path assetsSource = fs::path(projectPath) / "Assets";
-    fs::path assetsDest = buildPath / "Assets";
-    copyAssets(assetsSource.string(), assetsDest.string());
-
-    // Copy runtime executable
+    copyAssets(projectPath + "/Assets", outputDirectory + "/Assets");
     copyRuntime(outputDirectory);
 
     std::cout << "[BuildSystem] Build completed successfully.\n";
@@ -84,14 +75,13 @@ void BuildSystem::copyAssets(const std::string& from, const std::string& to) {
 }
 
 void BuildSystem::copyRuntime(const std::string& to) {
-    const fs::path runtimeSource = fs::path("bin") / "TRPGRuntime.exe";
-    const fs::path runtimeDest = fs::path(to) / "TRPGGame.exe";
+    fs::path runtimeSource = fs::path("bin") / "TRPGRuntime.exe";
+    fs::path runtimeDest = fs::path(to) / "TRPGGame.exe";
 
     try {
         fs::copy_file(runtimeSource, runtimeDest, fs::copy_options::overwrite_existing);
-        std::cout << "[BuildSystem] Copied runtime to export folder.\n";
+        std::cout << "[BuildSystem] Copied runtime executable.\n";
     } catch (const fs::filesystem_error& e) {
         std::cerr << "[BuildSystem] Failed to copy runtime: " << e.what() << "\n";
     }
 }
-

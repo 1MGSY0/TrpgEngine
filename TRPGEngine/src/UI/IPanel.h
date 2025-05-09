@@ -1,9 +1,7 @@
 #pragma once
+#include <string>
 
-class IPanel {
-public:
-    virtual ~IPanel() = default;
-    virtual void render() = 0;
-    virtual const char* getName() const = 0;
-    virtual bool isVisible() const { return true; }
-};
+inline bool endsWith(const std::string& str, const std::string& suffix) {
+    return str.size() >= suffix.size() &&
+           str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}

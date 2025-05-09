@@ -1,26 +1,59 @@
 #include "AudioPanel.h"
-#include "Assets/AudioAsset.h"
-#include "Project/ResourceManager.h"
-#include <imgui.h>
-#include <memory>
+#include "Engine/Entity/Components/AudioComponent.h"
+#include "Engine/Resources/ResourceManager.h"
+#include "Engine/Assets/ImportManager.h"
 
-static char nameBuffer[128] = "";
-static char pathBuffer[256] = "";
+#include <imgui.h>
+#include <imgui_stdlib.h>
+
+static std::string name, audioPath;
+static float volume = 1.0f;
+static bool loop = false;
 
 void renderAudioPanel() {
-    ImGui::Text("Audio Assets");
-    ImGui::InputText("Name", nameBuffer, IM_ARRAYSIZE(nameBuffer));
-    ImGui::InputText("File Path", pathBuffer, IM_ARRAYSIZE(pathBuffer));
+    ImGui::Text("Audio Component");
+    ImGui::InputText("Name", &name);
+    ImGui::InputText("File Path", &audioPath);
+    ImGui::SliderFloat("Volume", &volume, 0.0f, 1.0f);
+    ImGui::Checkbox("Loop", &loop);
 
-    if (ImGui::Button("Import Audio")) {
-        auto asset = std::make_shared<AudioAsset>(nameBuffer, pathBuffer);
-        ResourceManager::get().addAudio(asset);
-        nameBuffer[0] = pathBuffer[0] = '\0';
+    if (ImGui::Button("Add Audio Component")) {
+        auto audio = std::make_shared<AudioComponent>(name, name);
+        audio->setAudioPath(audioPath);
+        audio->setLoop(loop);
+        audio->setVolume(volume);
+
+        ResourceManager::get().addAudio(name, audio);
+
+        name.clear();
+        audioPath.clear();
+        volume = 1.0f;
+        loop = false;
     }
 
     ImGui::Separator();
-    ImGui::Text("Imported Audio Files:");
-    for (auto& audio : ResourceManager::get().getAudios()) {
-        ImGui::BulletText("%s -> %s", audio->getName().c_str(), audio->getFilePath().c_str());
+    ImGui::Text("Stored Audio:");
+
+    for (const auto& a : ResourceManager::get().getAllAudio()) {
+        ImGui::BulletText("%s", a->getName().c_str());
     }
+
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATHS")) {
+            const char* path = static_cast<const char*>(payload->Data);
+            ImportManager::importAsset(path, AssetType::Audio);
+        }
+        ImGui::EndDragDropTarget();
+    }
+}
+
+void renderAudioInspector(const std::string& name) {
+    auto audio = ResourceManager::get().getAudio(name);
+    if (!audio) return;
+
+    ImGui::Text("Editing Audio: %s", name.c_str());
+
+    ImGui::InputText("Audio Path", &audio->getPathRef());
+    ImGui::SliderFloat("Volume", &audio->getVolumeRef(), 0.0f, 1.0f);
+    ImGui::Checkbox("Loop", &audio->getLoopRef());
 }
