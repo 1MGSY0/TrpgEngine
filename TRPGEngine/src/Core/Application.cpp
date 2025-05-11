@@ -7,19 +7,16 @@
 
 #include <Windows.h>
 #include "Application.h"
-#include "UI/EditorUI.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
-
-// ImGui headers
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
-
 #include <shellapi.h>
 
+#include "UI/EditorUI.h"
 #include "UI/ImGUIUtils/ImGuiUtils.h"
 
 // Use unique_ptr to manage EditorUI automatically

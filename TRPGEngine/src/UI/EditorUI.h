@@ -26,24 +26,24 @@ public:
     void renderStatusBar();
     void showUnsavedChangesPopup();
 
-    
-
+    void forceFolderRefresh();
     void handlePlatformEvents(); 
     void setStatusMessage(const std::string& message); 
 
     static void glfwFileDropCallback(GLFWwindow* window, int count, const char** paths);
 
-    const std::filesystem::path& getSelectedFolder() const;
     void setSelectedFolder(const std::filesystem::path& folder);
+    
+    const std::filesystem::path& getSelectedFolder() const { return m_selectedFolder; }
+    const std::string& getSelectedFileName() const { return m_selectedFileName; }
+    const std::filesystem::path& getAssetsRoot() const { return m_assetsRoot; }
 
 private:
     GLFWwindow* m_window;
     bool m_shouldBuildDockLayout = false;
-    
 
     std::string m_saveStatus;
-    std::string m_selectedAssetName;
-    std::string m_selectedAssetType;
+    std::string m_selectedFileName;
     std::filesystem::path m_assetsRoot = "Runtime";        // base folder
     std::filesystem::path m_selectedFolder = m_assetsRoot; // Currently open folder
 
@@ -52,5 +52,6 @@ private:
 
     bool m_showUnsavedPrompt = false;
     bool m_actionAfterPrompt = false;
+    bool m_forceRefresh = false;
     
 };

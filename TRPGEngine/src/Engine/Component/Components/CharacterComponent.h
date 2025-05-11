@@ -1,12 +1,12 @@
 #pragma once
 
-#include "Engine/Assets/AssetBase.h"
-#include "Engine/Assets/AssetType.h"
+#include "Engine/Entity/ComponentBase.h"
+#include "Engine/Entity/ComponentType.h"
 #include <json.hpp>
 #include <string>
 #include <unordered_map>
 
-class CharacterComponent : public AssetBase {
+class CharacterComponent : public ComponentBase {
 public:
     std::string name;
     std::unordered_map<std::string, int> stats;
@@ -15,7 +15,7 @@ public:
 
     std::string getID() const override { return name; }
 
-    AssetType getType() const override { return AssetType::Character; }
+    ComponentType getType() const override { return ComponentType::Character; }
 
     nlohmann::json toJson() const override {
         return {
@@ -33,5 +33,9 @@ public:
         comp->iconImage = j.value("icon", "Assets/Icons/no_image.png");
         comp->stateImages = j.value("states", std::unordered_map<std::string, std::string>{});
         return comp;
+    }
+
+    ComponentType getType() const override {
+        return ComponentType::Character;
     }
 };

@@ -9,8 +9,8 @@
 
 #include "UI/ScenePanel/ScenePanel.h"
 
-#include "Engine/Resources/ResourceManager.h"
-#include "Engine/Assets/AssetRegistry.h"
+#include "Resources/ResourceManager.h"
+#include "Engine/Entity/ComponentRegistry.h"
 #include "Project/ProjectManager.h"
 #include "Project/BuildSystem.h"
 #include "Project/RuntimeLauncher.h"
@@ -163,10 +163,11 @@ void EditorUI::glfwFileDropCallback(GLFWwindow* window, int count, const char** 
     }
 }
 
-const std::filesystem::path& EditorUI::getSelectedFolder() const {
-    return m_selectedFolder;
-}
 
 void EditorUI::setSelectedFolder(const std::filesystem::path& folder) {
     m_selectedFolder = folder;
+}
+
+void EditorUI::forceFolderRefresh() {
+    m_forceRefresh = true; 
 }

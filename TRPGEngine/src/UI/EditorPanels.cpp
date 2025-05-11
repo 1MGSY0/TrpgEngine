@@ -7,10 +7,15 @@
 #include <iostream>
 
 #include "UI/ImGuiUtils/ImGuiUtils.h"
-#include "Engine/Assets/AssetRegistry.h"
-#include "Engine/Resources/ResourceManager.h"
+#include "Engine/Entity/ComponentRegistry.h"
+#include "Resources/ResourceManager.h"
+#include "Engine/Component/Components/CharacterComponent.h"
+#include "Engine/Component/Components/ScriptComponent.h"
 
 #include "UI/ScenePanel/ScenePanel.h"
+#include "UI/AssetPanels/CharacterPanel.h"
+#include "UI/AssetPanels/ScriptPanel.h"
+
 
 void EditorUI::renderFlowTabs() {
 
@@ -86,11 +91,28 @@ void EditorUI::renderInspectorTabs() {
 
     if (ImGui::BeginTabBar("InspectorTabs")) {
         if (ImGui::BeginTabItem("Properties")) {
-            if (!m_selectedAssetName.empty()) {
-                ImGui::Text("Selected: %s", m_selectedAssetName.c_str());
-
-                AssetType type = AssetRegistry::getTypeFromExtension(m_selectedAssetName);
-                AssetRegistry::renderInspector(type, m_selectedAssetName);
+            if (!m_selectedFileName.empty()) {
+                ImGui::Text("Selected: %s", m_selectedFileName.c_str());
+                for (const auto& [type, vec] : ResourceManager::get().getAllAssets()) {
+                    for (const auto& asset : vec) {
+                        if (asset && asset->getID() == m_selectedFileName) {
+                            if (type == ComponentType::Character) {
+                                auto character = std::dynamic_pointer_cast<CharacterComponent>(asset);
+                                if (character) {
+                                    renderCharacterInspector(character);
+                                    return;
+                                }
+                            }
+                            if (type == AssetType::Script) {
+                                auto script = std::dynamic_pointer_cast<ScriptComponent>(asset);
+                                if (script) {
+                                    renderScriptInspector(script);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
             } else {
                 ImGui::Text("No asset selected.");
             }
@@ -98,9 +120,9 @@ void EditorUI::renderInspectorTabs() {
         }
         ImGui::EndTabBar();
     }
-
     ImGui::End();
 }
+
 
 void EditorUI::renderAssetBrowser() {
     ImGui::Begin("Assets Panel");
@@ -144,7 +166,7 @@ void EditorUI::renderFolderTree(const std::filesystem::path& path, const std::fi
             if (isFolder)
                 m_selectedFolder = entry.path();
             else
-                m_selectedAssetName = entry.path().filename().string();
+                m_selectedFileName = entry.path().filename().string();
         }
 
         if (ImGui::IsItemHovered())

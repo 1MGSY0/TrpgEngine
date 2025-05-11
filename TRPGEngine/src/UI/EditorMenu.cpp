@@ -3,7 +3,7 @@
 #include "UI/AssetPanels/CharacterPanel.h"
 #include "UI/AssetPanels/ScriptPanel.h"
 
-#include "Engine/Resources/ResourceManager.h"
+#include "Resources/ResourceManager.h"
 #include "Project/ProjectManager.h"
 #include "Project/BuildSystem.h"
 #include "ImGUIUtils/ImGuiUtils.h"
@@ -68,28 +68,23 @@ void EditorUI::renderMenuBar() {
                 }
                 ImGui::EndPopup();
             }
-
             if (ImGui::BeginMenu("Import")) {
-                if (ImGui::BeginMenu("Assets")) {
-                    if (ImGui::MenuItem("Text")) {
-                        std::string path = openFileDialog();
-                        if (!path.empty()) {
-                            AssetRegistry::importFile(path);
-                            ResourceManager::get().setUnsavedChanges(true);
-                        }
-                    }
-                    if (ImGui::MenuItem("Character")) {
-                        std::string path = openFileDialog();
-                        if (!path.empty()) {
-                            AssetRegistry::importFile(path);
-                            ResourceManager::get().setUnsavedChanges(true);
-                        }
-                    }
-                    if (ImGui::MenuItem("Audio")) {
-                        std::string path = openFileDialog();
-                        if (!path.empty()) {
-                            AssetRegistry::importFile(path);
-                            ResourceManager::get().setUnsavedChanges(true);
+                if (ImGui::BeginMenu("Components")) {
+                    for (const auto& info : ComponentTypeRegistry::getAllInfos()) {
+                        if (ImGui::MenuItem(info.key.c_str())) {
+                            std::string path = openFileDialog();
+                            if (!path.empty()) {
+                                auto jsonOpt = ResourceManager::get().loadAssetFile(path);
+                                if (jsonOpt) {
+                                    const auto& j = *jsonOpt;
+                                    if (ResourceManager::get().importComponentFromJson(j, info.type)) {
+                                        ResourceManager::get().setUnsavedChanges(true);
+                                        if (auto* editor = EditorUI::get()) {
+                                            editor->forceFolderRefresh();
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     ImGui::EndMenu();
@@ -122,11 +117,40 @@ void EditorUI::renderMenuBar() {
         }
 
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("New Character")) {
-                renderAddCharacter();
+            if (ImGui::MenuItem("Rename Selected File")) {
+                static char newName[128] = "";
+                std::string currentName = m_selectedAssetName;
+                ImGui::OpenPopup("RenameAssetPopup");
+
+                if (ImGui::BeginPopupModal("RenameAssetPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    ImGui::InputText("New Name", newName, IM_ARRAYSIZE(newName));
+
+                    if (ImGui::Button("Rename")) {
+                        if (strlen(newName) > 0) {
+                            ResourceManager::get().renameAssetFile(currentName, newName);
+                            strcpy(newName, "");
+                            m_selectedAssetName = newName;
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel")) {
+                        ImGui::CloseCurrentPopup();
+                    }
+
+                    ImGui::EndPopup();
+                }
             }
-            if (ImGui::MenuItem("New Script")) {
-                renderAddScript();
+            if (ImGui::BeginMenu("New Components")) {
+                for (const auto& info : ComponentTypeRegistry::getAllInfos()) {
+                    std::string label = "New " + info.key;
+                    if (ImGui::MenuItem(label.c_str())) {
+                        auto folder = EditorUI::get()->getSelectedFolder();
+                        ResourceManager::get().createComponent(info.type, folder, "New" + info.key);
+                    }
+                }
+                ImGui::EndMenu();
             }
             ImGui::EndMenu();
         }

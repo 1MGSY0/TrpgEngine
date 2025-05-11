@@ -1,15 +1,16 @@
-#include "CharacterPanel.h"
-#include "Engine/Entity/Components/CharacterComponent.h"
-#include "Engine/Resources/ResourceManager.h"
-#include "UI/ImGuiUtils/ImGuiUtils.h"
-#include "UI/EditorUI.h"
-#include <misc/cpp/imgui_stdlib.h> 
 
 #include <imgui.h>
 #include <fstream>
 #include <memory>
 #include <cstring>
 #include <filesystem>
+#include <misc/cpp/imgui_stdlib.h> 
+
+#include "CharacterPanel.h"
+#include "Engine/Entity/Components/CharacterComponent.h"
+
+#include "UI/ImGuiUtils/ImGuiUtils.h"
+#include "UI/EditorUI.h"
 
 void renderCharacterInspector(std::shared_ptr<CharacterComponent> character) {
     if (!character) {
@@ -67,17 +68,3 @@ void renderCharacterInspector(std::shared_ptr<CharacterComponent> character) {
         }
     }
 }
-
-void renderAddCharacter() {
-    auto character = std::make_shared<CharacterComponent>();
-    character->name = "NewCharacter";
-
-    auto folder = EditorUI::get()->getSelectedFolder();
-    std::filesystem::create_directories(folder);
-    std::string filePath = (folder / (character->name + ".json")).string();
-
-    // Save asset (optional) or add it to the registry
-    ResourceManager::get().addAsset<CharacterComponent>(character);
-    ResourceManager::get().setUnsavedChanges(true);
-}
-

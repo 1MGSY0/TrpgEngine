@@ -1,7 +1,8 @@
 #pragma once
-#include "Engine/Assets/AssetBase.h"
+#include "Engine/Entity/ComponentBase.h"
+#include "Engine/Entity/ComponentType.h"
 
-class ScriptComponent : public AssetBase {
+class ScriptComponent : public ComponentBase {
 public:
     std::string name;
     std::string scriptPath;
@@ -22,7 +23,7 @@ public:
         return comp;
     }
 
-    AssetType getType() const override {
-        return AssetType::Script;
+    ComponentType getType() const override {
+        return ComponentType::Script;
     }
 };

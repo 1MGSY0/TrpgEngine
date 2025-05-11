@@ -1,10 +1,3 @@
-#include "UI/ImGUIUtils/ImGuiUtils.h"
-#include "UI/EditorUI.h"
-
-#include "Engine/Assets/AssetRegistry.h"
-#include "Engine/Resources/ResourceManager.h"
-
-#include "UI/ScenePanel/ScenePanel.h"
 
 #include <imgui.h>
 #include <Windows.h>
@@ -13,6 +6,9 @@
 #include <iostream>
 #include <string>
 #include <shellapi.h>
+
+#include "UI/EditorUI.h"
+#include "ImGuiUtils.h"
 
 namespace fs = std::filesystem;
 static std::vector<std::string> s_droppedFiles;
