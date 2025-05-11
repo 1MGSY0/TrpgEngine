@@ -1,7 +1,8 @@
 #pragma once
-#include "UI/EditorUI.h"
 
+#include <memory>
 struct GLFWwindow;
+class EditorUI;
 
 class Application {
 public:
@@ -12,14 +13,12 @@ public:
 
 private:
     bool initWindow();
-    void mainLoop();
     void shutdown();
+    void mainLoop();
+    void initEngine();
+    void update();
+    void render();
 
     GLFWwindow* m_window;
-    EditorUI* m_editorUI;
-
-    // Dummy future stubs
-    void initEngine();         
-    void update();             
-    void render();             
+    std::unique_ptr<EditorUI> m_editorUI;
 };

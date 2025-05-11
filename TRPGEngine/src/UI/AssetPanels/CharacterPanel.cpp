@@ -1,58 +1,83 @@
 #include "CharacterPanel.h"
 #include "Engine/Entity/Components/CharacterComponent.h"
 #include "Engine/Resources/ResourceManager.h"
-#include "Engine/Assets/ImportManager.h"
+#include "UI/ImGuiUtils/ImGuiUtils.h"
+#include "UI/EditorUI.h"
+#include <misc/cpp/imgui_stdlib.h> 
 
 #include <imgui.h>
-#include <imgui_stdlib.h>
+#include <fstream>
+#include <memory>
+#include <cstring>
+#include <filesystem>
 
-static std::string name, spritePath;
-static int hp = 100, mp = 50, str = 10;
-
-void renderCharactersPanel() {
-    ImGui::Text("Create Character");
-    ImGui::InputText("Name", &name);
-    ImGui::InputText("Sprite Path", &spritePath);
-    ImGui::InputInt("HP", &hp);
-    ImGui::InputInt("MP", &mp);
-    ImGui::InputInt("Strength", &str);
-
-    if (ImGui::Button("Add Character")) {
-        auto character = std::make_shared<CharacterComponent>(name, name);
-        character->setSpritePath(spritePath);
-        character->setStat("HP", hp);
-        character->setStat("MP", mp);
-        character->setStat("STR", str);
-
-        ResourceManager::get().addCharacter(name, character);
-
-        name.clear();
-        spritePath.clear();
+void renderCharacterInspector(std::shared_ptr<CharacterComponent> character) {
+    if (!character) {
+        ImGui::Text("No character selected.");
+        return;
     }
 
-    ImGui::Separator();
-    ImGui::Text("Characters:");
-    for (const auto& c : ResourceManager::get().getAllCharacters()) {
-        ImGui::BulletText("%s", c->getName().c_str());
-    }
+    // Editable name
+    ImGui::InputText("Name", &character->name);
 
-    if (ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATHS")) {
-            const char* path = static_cast<const char*>(payload->Data);
-            ImportManager::importAsset(path, AssetType::Character);
+    // Editable icon image path
+    ImGui::InputText("Icon Image", &character->iconImage);
+
+    // --- State Images ---
+    if (ImGui::CollapsingHeader("State Images")) {
+        for (auto& [state, path] : character->stateImages) {
+            ImGui::InputText(state.c_str(), &path);
         }
-        ImGui::EndDragDropTarget();
+
+        static std::string newState;
+        static std::string newPath;
+
+        ImGui::InputText("State", &newState);
+        ImGui::InputText("Path", &newPath);
+
+        if (ImGui::Button("Add State")) {
+            if (!newState.empty() && !newPath.empty()) {
+                character->stateImages[newState] = newPath;
+                newState.clear();
+                newPath.clear();
+            }
+        }
+    }
+
+    // --- Stats ---
+    if (ImGui::CollapsingHeader("Stats")) {
+        for (auto& [key, value] : character->stats) {
+            int v = value;
+            if (ImGui::DragInt(key.c_str(), &v)) {
+                character->stats[key] = v;
+            }
+        }
+
+        static std::string newStatKey;
+        static int newStatValue = 0;
+
+        ImGui::InputText("New Stat", &newStatKey);
+        ImGui::DragInt("Value", &newStatValue);
+        if (ImGui::Button("Add Stat")) {
+            if (!newStatKey.empty()) {
+                character->stats[newStatKey] = newStatValue;
+                newStatKey.clear();
+                newStatValue = 0;
+            }
+        }
     }
 }
 
-void renderCharacterInspector(const std::string& name) {
-    auto character = ResourceManager::get().getCharacter(name);
-    if (!character) return;
+void renderAddCharacter() {
+    auto character = std::make_shared<CharacterComponent>();
+    character->name = "NewCharacter";
 
-    ImGui::Text("Editing Character: %s", name.c_str());
+    auto folder = EditorUI::get()->getSelectedFolder();
+    std::filesystem::create_directories(folder);
+    std::string filePath = (folder / (character->name + ".json")).string();
 
-    ImGui::InputText("Sprite Path", &character->getSpritePathRef());
-    for (auto& [stat, value] : character->getStatsRef()) {
-        ImGui::SliderInt(stat.c_str(), &value, 0, 100);
-    }
+    // Save asset (optional) or add it to the registry
+    ResourceManager::get().addAsset<CharacterComponent>(character);
+    ResourceManager::get().setUnsavedChanges(true);
 }
+

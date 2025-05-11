@@ -1,17 +1,16 @@
+#define NOMINMAX
 #include "EditorUI.h"
-#include <vector>
 #include <imgui.h>
+
+#include <vector>
+#include <algorithm> 
 #include <iostream>
 
-
-#include "Engine/Assets/ImportManager.h"	
+#include "UI/ImGuiUtils/ImGuiUtils.h"
+#include "Engine/Assets/AssetRegistry.h"
 #include "Engine/Resources/ResourceManager.h"
 
 #include "UI/ScenePanel/ScenePanel.h"
-#include "UI/AssetPanels/TextPanel.h"
-#include "UI/AssetPanels/CharacterPanel.h"
-#include "UI/AssetPanels/AudioPanel.h"
-#include "UI/IPanel.h"
 
 void EditorUI::renderFlowTabs() {
 
@@ -89,20 +88,14 @@ void EditorUI::renderInspectorTabs() {
         if (ImGui::BeginTabItem("Properties")) {
             if (!m_selectedAssetName.empty()) {
                 ImGui::Text("Selected: %s", m_selectedAssetName.c_str());
-                    if (m_selectedAssetType == "Text") {
-                        renderTextInspector(m_selectedAssetName);
-                    } else if (m_selectedAssetType == "Character") {
-                        renderCharacterInspector(m_selectedAssetName);
-                    } else if (m_selectedAssetType == "Audio") {
-                        renderAudioInspector(m_selectedAssetName);
-                    }
+
+                AssetType type = AssetRegistry::getTypeFromExtension(m_selectedAssetName);
+                AssetRegistry::renderInspector(type, m_selectedAssetName);
             } else {
                 ImGui::Text("No asset selected.");
             }
-
             ImGui::EndTabItem();
         }
-
         ImGui::EndTabBar();
     }
 
@@ -115,40 +108,84 @@ void EditorUI::renderAssetBrowser() {
     ImVec2 panelSize = ImGui::GetContentRegionAvail();
     float leftPaneWidth = panelSize.x * 0.3f;
 
-    // Left: Folder tree
+    // File Tree
     ImGui::BeginChild("AssetFolders", ImVec2(leftPaneWidth, 0), true);
     renderFolderTree(m_assetsRoot, m_assetsRoot);
     ImGui::EndChild();
 
     ImGui::SameLine();
 
-    // Right: Folder content preview
+    // File Preview
     ImGui::BeginChild("AssetPreview", ImVec2(0, 0), true);
     renderFolderPreview(m_selectedFolder);
+
     ImGui::EndChild();
 
     ImGui::End();
 }
 
 void EditorUI::renderFolderTree(const std::filesystem::path& path, const std::filesystem::path& base) {
+    static std::filesystem::path hoveredFolder = m_selectedFolder;
+
     for (const auto& entry : std::filesystem::directory_iterator(path)) {
-        if (!entry.is_directory()) continue;
+        std::string name = entry.path().filename().string();
+        bool isFolder = entry.is_directory();
 
-        std::string label = entry.path().filename().string();
-        bool isSelected = (entry.path() == m_selectedFolder);
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
+        if (entry.path() == m_selectedFolder)
+            flags |= ImGuiTreeNodeFlags_Selected;
 
-        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
-        if (isSelected) flags |= ImGuiTreeNodeFlags_Selected;
+        if (!isFolder)
+            flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
-        bool open = ImGui::TreeNodeEx(label.c_str(), flags);
+        bool open = ImGui::TreeNodeEx(name.c_str(), flags);
+
         if (ImGui::IsItemClicked()) {
-            m_selectedFolder = entry.path();
+            if (isFolder)
+                m_selectedFolder = entry.path();
+            else
+                m_selectedAssetName = entry.path().filename().string();
         }
 
-        if (open) {
+        if (ImGui::IsItemHovered())
+            hoveredFolder = entry.path();
+
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATHS")) {
+                const char* dropped = static_cast<const char*>(payload->Data);
+                if (dropped) {
+                    auto dest = entry.path() / std::filesystem::path(dropped).filename();
+                    std::error_code ec;
+                    std::filesystem::rename(dropped, dest, ec);
+                    if (!ec) {
+                        AssetRegistry::importFile(dest.string());
+                        ResourceManager::get().setUnsavedChanges(true);
+                        setStatusMessage("Moved to: " + dest.string());
+                    }
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        if (open && isFolder) {
             renderFolderTree(entry.path(), base);
             ImGui::TreePop();
         }
+    }
+
+    if (!s_pendingDroppedPaths.empty() && ImGui::IsWindowHovered()) {
+        auto target = hoveredFolder.empty() ? m_selectedFolder : hoveredFolder;
+        for (const auto& file : s_pendingDroppedPaths) {
+            auto dest = target / std::filesystem::path(file).filename();
+            std::error_code ec;
+            std::filesystem::copy_file(file, dest, std::filesystem::copy_options::overwrite_existing, ec);
+            if (!ec) {
+                AssetRegistry::importFile(dest.string());
+                ResourceManager::get().setUnsavedChanges(true);
+                setStatusMessage("Imported: " + dest.string());
+            }
+        }
+        s_pendingDroppedPaths.clear();
     }
 }
 
@@ -161,21 +198,27 @@ void EditorUI::renderFolderPreview(const std::filesystem::path& folder) {
 
     const float cellSize = 100.0f;
     const float padding = 10.0f;
-    float panelWidth = ImGui::GetContentRegionAvail().x;
-    int columnCount = std::max(1, static_cast<int>(panelWidth / (cellSize + padding)));
-
+    int columnCount = std::max(1, int(ImGui::GetContentRegionAvail().x / (cellSize + padding)));
     ImGui::Columns(columnCount, nullptr, false);
 
     for (const auto& entry : std::filesystem::directory_iterator(folder)) {
         std::string name = entry.path().filename().string();
+        std::string fullPath = entry.path().string();
 
-        if (entry.is_directory()) {
-            ImGui::Button((std::string("📁 ") + name).c_str(), ImVec2(cellSize, cellSize * 0.7f));
-            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
-                m_selectedFolder = entry.path();  // Navigate into folder
-            }
-        } else {
-            ImGui::Button((std::string("📄 ") + name).c_str(), ImVec2(cellSize, cellSize * 0.7f));
+        if (ImGui::Button(name.c_str(), ImVec2(cellSize, cellSize * 0.7f))) {
+            m_selectedAssetName = entry.path().filename().string();
+
+            AssetType type = AssetRegistry::getTypeFromExtension(entry.path().string());
+            if (const auto* info = AssetTypeRegistry::getInfo(type))
+                m_selectedAssetType = info->key;
+            else
+                m_selectedAssetType = "Unknown";
+        }
+
+        if (entry.is_regular_file() && ImGui::BeginDragDropSource()) {
+            ImGui::SetDragDropPayload("FILE_PATHS", fullPath.c_str(), fullPath.size() + 1);
+            ImGui::TextUnformatted(name.c_str());
+            ImGui::EndDragDropSource();
         }
 
         ImGui::NextColumn();
@@ -183,23 +226,36 @@ void EditorUI::renderFolderPreview(const std::filesystem::path& folder) {
 
     ImGui::Columns(1);
 
-    // Drag-and-drop asset import support
+    // Internal Drop
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATHS")) {
-            const char* path = static_cast<const char*>(payload->Data);
-            if (path) {
-                std::string filePath(path);
-                if (endsWith(filePath, ".txt") || endsWith(filePath, ".json")) {
-                    ImportManager::importAsset(filePath, AssetType::Text);
-                } else if (endsWith(filePath, ".char")) {
-                    ImportManager::importAsset(filePath, AssetType::Character);
-                } else if (endsWith(filePath, ".mp3") || endsWith(filePath, ".wav")) {
-                    ImportManager::importAsset(filePath, AssetType::Audio);
-                } else {
-                    std::cerr << "[DragDrop] Unsupported file type: " << filePath << "\n";
+            const char* dropped = static_cast<const char*>(payload->Data);
+            if (dropped) {
+                auto dest = folder / std::filesystem::path(dropped).filename();
+                std::error_code ec;
+                std::filesystem::rename(dropped, dest, ec);
+                if (!ec) {
+                    AssetRegistry::importFile(dest.string());
+                    ResourceManager::get().setUnsavedChanges(true);
+                    setStatusMessage("Moved into preview: " + dest.string());
                 }
             }
         }
         ImGui::EndDragDropTarget();
+    }
+
+    // External Drop
+    if (!s_pendingDroppedPaths.empty() && ImGui::IsWindowHovered()) {
+        for (const auto& path : s_pendingDroppedPaths) {
+            auto dest = folder / std::filesystem::path(path).filename();
+            std::error_code ec;
+            std::filesystem::copy_file(path, dest, std::filesystem::copy_options::overwrite_existing, ec);
+            if (!ec) {
+                AssetRegistry::importFile(dest.string());
+                ResourceManager::get().setUnsavedChanges(true);
+                setStatusMessage("Imported into preview: " + dest.string());
+            }
+        }
+        s_pendingDroppedPaths.clear();
     }
 }

@@ -1,5 +1,7 @@
 #pragma once
-#include <string>
+#include <memory>
+class CharacterComponent;
 
-void renderCharactersPanel();
-void renderCharacterInspector(const std::string& name);
+void renderCharacterInspector(std::shared_ptr<CharacterComponent> character);
+void renderAddCharacter();
+

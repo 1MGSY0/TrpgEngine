@@ -1,14 +1,23 @@
 #include "UI/ImGUIUtils/ImGuiUtils.h"
+#include "UI/EditorUI.h"
+
+#include "Engine/Assets/AssetRegistry.h"
+#include "Engine/Resources/ResourceManager.h"
+
+#include "UI/ScenePanel/ScenePanel.h"
+
 #include <imgui.h>
 #include <Windows.h>
 #include <commdlg.h>
 #include <filesystem>
-namespace fs = std::filesystem;
-
+#include <iostream>
 #include <string>
+#include <shellapi.h>
 
+namespace fs = std::filesystem;
 static std::vector<std::string> s_droppedFiles;
 
+// --- File Dialogs ---
 std::string openFileDialog(const char* filter) {
     char filename[MAX_PATH] = "";
     OPENFILENAMEA ofn = { sizeof(ofn) };
@@ -17,7 +26,6 @@ std::string openFileDialog(const char* filter) {
     ofn.lpstrFilter = filter;
     ofn.lpstrDefExt = "trpgproj";
     ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
-
     return GetOpenFileNameA(&ofn) ? std::string(filename) : "";
 }
 
@@ -29,41 +37,37 @@ std::string saveFileDialog(const char* filter) {
     ofn.lpstrFilter = filter;
     ofn.lpstrDefExt = "trpgproj";
     ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
-
     if (GetSaveFileNameA(&ofn)) {
         std::string result(filename);
-        if (fs::path(result).extension() != ".trpgproj") {
+        if (fs::path(result).extension() != ".trpgproj")
             result += ".trpgproj";
-        }
         return result;
     }
-
     return "";
 }
 
+void handleOSFileDrop(HDROP hDrop, EditorUI* editor) {
+    if (!hDrop || !editor) return;
 
-void handleOSFileDrop(HWND hwnd) {
-    s_droppedFiles.clear();
+    UINT fileCount = DragQueryFileA(hDrop, 0xFFFFFFFF, nullptr, 0);
+    if (fileCount == 0) {
+        editor->setStatusMessage("Drop failed: No files detected.");
+        DragFinish(hDrop);
+        return;
+    }
 
-    HDROP hDrop = reinterpret_cast<HDROP>(GetClipboardData(CF_HDROP));
-    if (!hDrop) return;
-
-    UINT count = DragQueryFileA(hDrop, 0xFFFFFFFF, NULL, 0);
-    char filePath[MAX_PATH];
-
-    for (UINT i = 0; i < count; ++i) {
+    s_pendingDroppedPaths.clear();
+    for (UINT i = 0; i < fileCount; ++i) {
+        char filePath[MAX_PATH];
         if (DragQueryFileA(hDrop, i, filePath, MAX_PATH)) {
-            s_droppedFiles.emplace_back(filePath);
+            s_pendingDroppedPaths.emplace_back(filePath);
         }
     }
 
     DragFinish(hDrop);
 }
 
-std::vector<std::string> getDroppedFiles() {
-    return s_droppedFiles;
-}
-
+// --- Theme styling ---
 void applyCustomDarkTheme() {
     ImGuiStyle& style = ImGui::GetStyle();
     style.WindowRounding = 6.0f;
@@ -73,3 +77,8 @@ void applyCustomDarkTheme() {
     ImGui::StyleColorsDark();
 }
 
+// --- Utility ---
+bool endsWith(const std::string& str, const std::string& suffix) {
+    return str.size() >= suffix.size() &&
+           str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}

@@ -1,8 +1,8 @@
 #include "ProjectManager.h"
 #include "Engine/Resources/ResourceManager.h"
-#include "Engine/Entity/Components/TextComponent.h"
-#include "Engine/Entity/Components/CharacterComponent.h"
-#include "Engine/Entity/Components/AudioComponent.h"
+#include "Engine/Assets/AssetRegistry.h"
+#include "Engine/Assets/AssetType.h"
+#include "Engine/Assets/AssetBase.h"
 
 #include <json.hpp>
 #include <fstream>
@@ -15,26 +15,23 @@ std::string ProjectManager::s_currentProjectPath = "";
 std::string ProjectManager::s_tempLoadPath = "";
 
 static std::string ensureTrpgExtension(const std::string& path) {
-    std::filesystem::path p(path);
-    if (p.extension() != ".trpgproj") {
-        return p.string() + ".trpgproj";
-    }
-    return p.string();
+    fs::path p(path);
+    return (p.extension() != ".trpgproj") ? p.string() + ".trpgproj" : p.string();
 }
 
 bool ProjectManager::saveProjectToFile(const std::string& filePath) {
     json j;
     auto& rm = ResourceManager::get();
 
-    // Save components
-    for (auto& t : rm.getAllTexts())
-        j["texts"].push_back(t->toJson());
-
-    for (auto& c : rm.getAllCharacters())
-        j["characters"].push_back(c->toJson());
-
-    for (auto& a : rm.getAllAudio())
-        j["audio"].push_back(a->toJson());
+    for (const auto& info : AssetTypeRegistry::getAllTypes()) {
+        auto assets = rm.getAssets(info.type);
+        if (!assets.empty()) {
+            json arr;
+            for (const auto& asset : assets)
+                arr.push_back(asset->toJson());
+            j[info.key] = arr;
+        }
+    }
 
     j["meta"] = {
         {"name", fs::path(filePath).stem().string()},
@@ -44,9 +41,7 @@ bool ProjectManager::saveProjectToFile(const std::string& filePath) {
 
     std::ofstream file(filePath);
     if (!file.is_open()) return false;
-
     file << j.dump(4);
-    file.close();
     return true;
 }
 
@@ -61,35 +56,14 @@ bool ProjectManager::loadProject(const std::string& filePath) {
 
     json j;
     file >> j;
-    file.close();
 
     auto& rm = ResourceManager::get();
     rm.clear();
 
-    // --- Text
-    if (j.contains("texts")) {
-        for (auto& t : j["texts"]) {
-            auto text = std::make_shared<TextComponent>();
-            text->fromJson(t);
-            rm.addText(text->getName(), text);
-        }
-    }
-
-    // --- Characters
-    if (j.contains("characters")) {
-        for (auto& c : j["characters"]) {
-            auto character = std::make_shared<CharacterComponent>();
-            character->fromJson(c);
-            rm.addCharacter(character->getName(), character);
-        }
-    }
-
-    // --- Audio
-    if (j.contains("audio")) {
-        for (auto& a : j["audio"]) {
-            auto audio = std::make_shared<AudioComponent>();
-            audio->fromJson(a);
-            rm.addAudio(audio->getName(), audio);
+    for (const auto& info : AssetTypeRegistry::getAllTypes()) {
+        const std::string& key = info.key;
+        if (j.contains(key)) {
+            AssetRegistry::loadFromJsonArray(info.type, j[key]);
         }
     }
 
@@ -97,7 +71,6 @@ bool ProjectManager::loadProject(const std::string& filePath) {
     rm.setUnsavedChanges(false);
     return true;
 }
-
 
 void ProjectManager::setCurrentProjectPath(const std::string& filePath) {
     s_currentProjectPath = ensureTrpgExtension(filePath);

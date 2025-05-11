@@ -1,12 +1,23 @@
 #pragma once
-#include <Windows.h>
-#include <string>
-#include <vector> 
 
-std::string openFileDialog(const char* filter = "All Files\0*.*\0");
-std::string saveFileDialog(const char* filter = "All Files\0*.*\0");
+#include <string>
+#include <vector>
+#include <Windows.h>
+#include <imgui.h>
+#include <filesystem>
+
+class EditorUI;
+
+// --- File Dialogs ---
+std::string openFileDialog(const char* filter = "All Files (*.*)\0*.*\0");
+std::string saveFileDialog(const char* filter = "All Files (*.*)\0*.*\0");
+
+// --- Drag & Drop ---
+extern std::vector<std::string> s_pendingDroppedPaths;
+void handleOSFileDrop(HDROP hDrop, EditorUI* editorUI);
+
+// --- Theme ---
 void applyCustomDarkTheme();
 
-// NEW:
-void handleOSFileDrop(HWND hwnd);
-std::vector<std::string> getDroppedFiles();
+// --- Utility ---
+bool endsWith(const std::string& str, const std::string& suffix);

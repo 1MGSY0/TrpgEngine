@@ -1,59 +1,28 @@
 #pragma once
-#include <unordered_map>
-#include <memory>
 #include <string>
-#include <vector>
-#include "Engine/Entity/Components/TextComponent.h"
-#include "Engine/Entity/Components/CharacterComponent.h"
-#include "Engine/Entity/Components/AudioComponent.h"
-
-// Enum for distinguishing asset import type
-enum class AssetType {
-    Text,
-    Character,
-    Audio
-};
-
+#include <filesystem>
+#include "Engine/Assets/AssetBase.h"
+#include "Engine/Assets/AssetRegistry.h"
 
 class ResourceManager {
 public:
-
     static ResourceManager& get();
 
-    // TEXT
-    void addText(const std::string& id, std::shared_ptr<TextComponent> text);
-    std::shared_ptr<TextComponent> getText(const std::string& id);
-    const std::vector<std::shared_ptr<TextComponent>>& getAllTexts() const;
-
-    // CHARACTER
-    void addCharacter(const std::string& id, std::shared_ptr<CharacterComponent> c);
-    std::shared_ptr<CharacterComponent> getCharacter(const std::string& id);
-    const std::vector<std::shared_ptr<CharacterComponent>>& getAllCharacters() const;
-
-    // AUDIO
-    void addAudio(const std::string& id, std::shared_ptr<AudioComponent> a);
-    std::shared_ptr<AudioComponent> getAudio(const std::string& id);
-    const std::vector<std::shared_ptr<AudioComponent>>& getAllAudio() const;
-
-    // --- Import from JSON file ---
-    bool importAssetFromFile(const std::string& filePath, AssetType type);
-
-    void clear();
+    bool importAssetFromFile(const std::string& path);
     bool hasUnsavedChanges() const;
-    void setUnsavedChanges(bool changed);
+    void setUnsavedChanges(bool v);
+    void clear();
 
+    std::vector<std::shared_ptr<AssetBase>> getAssets(AssetType type);
+
+    template <typename T>
+    void addAsset(const std::shared_ptr<T>& asset) {
+        static_assert(std::is_base_of<AssetBase, T>::value, "Must inherit from AssetBase");
+        m_registry.add(asset);
+    }
+    
 private:
     ResourceManager() = default;
-
-    std::unordered_map<std::string, std::shared_ptr<TextComponent>> m_textMap;
-    std::unordered_map<std::string, std::shared_ptr<CharacterComponent>> m_characterMap;
-    std::unordered_map<std::string, std::shared_ptr<AudioComponent>> m_audioMap;
-
-    std::vector<std::shared_ptr<TextComponent>> m_textAssets;
-    std::vector<std::shared_ptr<CharacterComponent>> m_characterAssets;
-    std::vector<std::shared_ptr<AudioComponent>> m_audioAssets;
-
-    bool m_unsavedChanges = false;
+    AssetRegistry m_registry;
+    bool m_unsaved = false;
 };
-
-

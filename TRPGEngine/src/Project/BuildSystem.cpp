@@ -1,9 +1,7 @@
 #include "BuildSystem.h"
 #include "ProjectManager.h"
+#include "Engine/Assets/AssetType.h" 
 #include "Engine/Resources/ResourceManager.h"
-#include "Engine/Entity/Components/TextComponent.h"
-#include "Engine/Entity/Components/CharacterComponent.h"
-#include "Engine/Entity/Components/AudioComponent.h"
 
 #include <filesystem>
 #include <fstream>
@@ -25,14 +23,13 @@ bool BuildSystem::buildProject(const std::string& projectPath, const std::string
     auto& rm = ResourceManager::get();
     json j;
 
-    for (auto& text : rm.getAllTexts())
-        j["texts"].push_back(text->toJson());
-
-    for (auto& character : rm.getAllCharacters())
-        j["characters"].push_back(character->toJson());
-
-    for (auto& audio : rm.getAllAudio())
-        j["audio"].push_back(audio->toJson());
+    for (const auto& info : AssetTypeRegistry::getAllTypes()) {
+        auto assets = rm.getAssets(info.type);
+        if (!assets.empty()) {
+            for (const auto& asset : assets)
+                j[info.key].push_back(asset->toJson());
+        }
+    }
 
     std::ofstream dataFile(fs::path(outputDirectory) / "data.json");
     if (!dataFile.is_open()) {

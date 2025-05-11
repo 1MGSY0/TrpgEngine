@@ -1,4 +1,8 @@
 #include "EditorUI.h"
+
+#include "UI/AssetPanels/CharacterPanel.h"
+#include "UI/AssetPanels/ScriptPanel.h"
+
 #include "Engine/Resources/ResourceManager.h"
 #include "Project/ProjectManager.h"
 #include "Project/BuildSystem.h"
@@ -70,19 +74,22 @@ void EditorUI::renderMenuBar() {
                     if (ImGui::MenuItem("Text")) {
                         std::string path = openFileDialog();
                         if (!path.empty()) {
-                            ResourceManager::get().importAssetFromFile(path, AssetType::Text);
+                            AssetRegistry::importFile(path);
+                            ResourceManager::get().setUnsavedChanges(true);
                         }
                     }
                     if (ImGui::MenuItem("Character")) {
                         std::string path = openFileDialog();
                         if (!path.empty()) {
-                            ResourceManager::get().importAssetFromFile(path, AssetType::Character);
+                            AssetRegistry::importFile(path);
+                            ResourceManager::get().setUnsavedChanges(true);
                         }
                     }
                     if (ImGui::MenuItem("Audio")) {
                         std::string path = openFileDialog();
                         if (!path.empty()) {
-                            ResourceManager::get().importAssetFromFile(path, AssetType::Audio);
+                            AssetRegistry::importFile(path);
+                            ResourceManager::get().setUnsavedChanges(true);
                         }
                     }
                     ImGui::EndMenu();
@@ -115,8 +122,11 @@ void EditorUI::renderMenuBar() {
         }
 
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("Undo")) {
-                // Undo logic here
+            if (ImGui::MenuItem("New Character")) {
+                renderAddCharacter();
+            }
+            if (ImGui::MenuItem("New Script")) {
+                renderAddScript();
             }
             ImGui::EndMenu();
         }
