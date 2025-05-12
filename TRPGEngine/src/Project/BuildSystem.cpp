@@ -1,7 +1,7 @@
 #include "BuildSystem.h"
 #include "ProjectManager.h"
-#include "Engine/Assets/AssetType.h" 
-#include "Engine/Resources/ResourceManager.h"
+#include "Engine/EntitySystem/ComponentType.h" 
+#include "Resources/ResourceManager.h"
 
 #include <filesystem>
 #include <fstream>

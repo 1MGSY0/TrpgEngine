@@ -9,10 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Engine/Entity/ComponentBase.h"
-#include "Engine/Entity/ComponentType.h"
-#include "Engine/Entity/ComponentRegistry.h"
-#include "FileAssetType.h" 
+#include "FileAssetType.hpp" 
 
 class ResourceManager {
 public:
@@ -36,23 +33,8 @@ public:
     bool renameAssetFile(const std::string& oldPath, const std::string& newName);
     bool deleteAssetFile(const std::string& path);
     void refreshFolder();
-
-    // -------------------------------
-    // Component File Handling (Import / Export)
-    // -------------------------------
-    bool importComponentFromJson(const nlohmann::json& j, ComponentType type);
-    bool loadComponentsFromJsonArray(ComponentType type, const nlohmann::json& jArray);
-    void importAllComponentsFromJson(const nlohmann::json& j);
-    bool exportComponentToJson(const std::shared_ptr<ComponentBase>& component, nlohmann::json& outJson);
     bool importFileAsset(const std::string& sourcePath, FileAssetType type);
 
-    // -------------------------------
-    // Generic Component Asset Creation
-    // -------------------------------
-    void addComponent(const std::shared_ptr<ComponentBase>& component);
-    bool saveComponentToAssetFile(const std::shared_ptr<ComponentBase>& component);
-    void editComponent(const std::shared_ptr<ComponentBase>& component);
-    bool deleteComponent(const std::shared_ptr<ComponentBase>& component);
     std::shared_ptr<ComponentBase> createComponent(ComponentType type, const std::string& defaultName = "NewAsset");
 
 private:
@@ -61,6 +43,6 @@ private:
     ResourceManager& operator=(const ResourceManager&) = delete;
 
 private:
-    ComponentRegistry m_registry;
+
     bool m_unsaved = false;
 };

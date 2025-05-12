@@ -1,7 +1,7 @@
-#include "ComponentType.h"
-#include "ComponentBase.h"
-#include "Engine/Entity/Components/CharacterComponent.h"
-#include "Engine/Entity/Components/ScriptComponent.h"
+#include "ComponentType.hpp"
+#include "ComponentBase.hpp"
+#include "Engine/EntitySystem/Components/CharacterComponent.hpp"
+#include "Engine/EntitySystem/Components/ScriptComponent.hpp"
 
 static std::vector<ComponentTypeInfo> componentTypeInfos;
 
@@ -31,9 +31,31 @@ namespace ComponentTypeRegistry {
     }
 
 
-
     void registerBuiltins() {
         componentTypeInfos.clear();
+        componentTypeInfos.emplace_back(ComponentTypeInfo{
+            ComponentType::SceneMetadata,
+            "scene",
+            { ".json" },
+            [](const nlohmann::json& j) { return SceneMetadataComponent::fromJson(j); },
+            []() { return std::make_shared<SceneMetadataComponent>(); }
+        });
+
+        componentTypeInfos.emplace_back(ComponentTypeInfo{
+            ComponentType::Parent,
+            "parent",
+            { ".json" },
+            [](const nlohmann::json& j) { return ParentComponent::fromJson(j); },
+            []() { return std::make_shared<ParentComponent>(); }
+        });
+
+        componentTypeInfos.emplace_back(ComponentTypeInfo{
+            ComponentType::Children,
+            "children",
+            { ".json" },
+            [](const nlohmann::json& j) { return ChildrenComponent::fromJson(j); },
+            []() { return std::make_shared<ChildrenComponent>(); }
+        });
 
         componentTypeInfos.emplace_back(ComponentTypeInfo{
             ComponentType::Character,

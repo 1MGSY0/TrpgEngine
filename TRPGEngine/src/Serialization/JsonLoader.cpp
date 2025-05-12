@@ -1,75 +1,40 @@
-#include "JsonLoader.h"
-#include <json.hpp>
-#include <fstream>
-#include <iostream>
-#include "Engine/Entity/Components/CharacterComponent.h"
-#include "Engine/Entity/Components/ScriptComponent.h"
+#include "JsonLoader.hpp"
+#include "Engine/EntitySystem/ComponentTypeRegistry.hpp"
 
 using json = nlohmann::json;
 
 namespace JsonLoader {
 
-    template<typename T>
-    std::shared_ptr<T> loadJsonFile(const std::string& filePath) {
-        std::ifstream in(filePath);
-        if (!in.is_open()) {
-            std::cerr << "[JsonLoader] Failed to open file: " << filePath << std::endl;
-            return nullptr;
-        }
+bool saveEntityToFile(Entity entity, const EntityManager& em, const std::string& path) {
+    std::ofstream out(path);
+    if (!out.is_open()) return false;
 
-        json j;
-        in >> j;
-
-        auto obj = std::make_shared<T>();
-        return obj;
+    json jEntity;
+    auto components = em.getAllComponents(entity);
+    for (auto& comp : components) {
+        jEntity[ComponentTypeRegistry::getInfo(comp->getType())->key] = comp->toJson();
     }
 
-    // --- CharacterComponent Specialization ---
-    template<>
-    std::shared_ptr<CharacterComponent> loadJsonFile<CharacterComponent>(const std::string& filePath) {
-        std::ifstream in(filePath);
-        if (!in.is_open()) {
-            std::cerr << "[JsonLoader] Failed to open file: " << filePath << std::endl;
-            return nullptr;
+    out << jEntity.dump(4);
+    return true;
+}
+
+Entity loadEntityFromFile(const std::string& path, EntityManager& em) {
+    std::ifstream in(path);
+    if (!in.is_open()) return INVALID_ENTITY;
+
+    json j;
+    in >> j;
+
+    Entity entity = em.createEntity();
+
+    for (const auto& info : ComponentTypeRegistry::getAllInfos()) {
+        if (j.contains(info.key)) {
+            auto comp = info.loader(j[info.key]);
+            if (comp) em.addComponent(entity, comp);
         }
-
-        json j;
-        in >> j;
-
-        auto character = std::make_shared<CharacterComponent>();
-        character->name = j.value("name", "");
-        character->iconImage = j.value("icon", "Assets/Icons/no_image.png");
-
-        if (j.contains("stats") && j["stats"].is_object()) {
-            for (auto& [key, val] : j["stats"].items()) {
-                character->stats[key] = val.get<int>();
-            }
-        }
-
-        if (j.contains("states") && j["states"].is_object()) {
-            for (auto& [state, path] : j["states"].items()) {
-                character->stateImages[state] = path.get<std::string>();
-            }
-        }
-
-        return character;
     }
 
-    // --- ScriptComponent Specialization ---
-    template<>
-    std::shared_ptr<ScriptComponent> loadJsonFile<ScriptComponent>(const std::string& filePath) {
-        std::ifstream in(filePath);
-        if (!in.is_open()) {
-            std::cerr << "[JsonLoader] Failed to open file: " << filePath << std::endl;
-            return nullptr;
-        }
-
-        json j;
-        in >> j;
-
-        auto script = std::make_shared<ScriptComponent>();
-        script->name = j.value("name", "");
-        script->scriptPath = j.value("path", "");
-        return script;
-    }
-} 
+    return entity;
+}
+}

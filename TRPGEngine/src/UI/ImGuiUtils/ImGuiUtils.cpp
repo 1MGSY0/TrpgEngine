@@ -7,8 +7,8 @@
 #include <string>
 #include <shellapi.h>
 
-#include "UI/EditorUI.h"
-#include "ImGuiUtils.h"
+#include "UI/EditorUI.hpp"
+#include "ImGuiUtils.hpp"
 
 namespace fs = std::filesystem;
 static std::vector<std::string> s_droppedFiles;

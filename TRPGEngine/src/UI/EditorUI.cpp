@@ -5,16 +5,16 @@
 #include <Windows.h>
 #include <shellapi.h>
 
-#include "EditorUI.h"
+#include "EditorUI.hpp"
 
-#include "UI/ScenePanel/ScenePanel.h"
+#include "UI/ScenePanel/ScenePanel.hpp"
 
-#include "Resources/ResourceManager.h"
-#include "Engine/Entity/ComponentRegistry.h"
-#include "Project/ProjectManager.h"
-#include "Project/BuildSystem.h"
-#include "Project/RuntimeLauncher.h"
-#include "ImGUIUtils/ImGuiUtils.h"
+#include "Resources/ResourceManager.hpp"
+#include "Engine/EntitySystem/ComponentRegistry.hpp"
+#include "Project/ProjectManager.hpp"
+#include "Project/BuildSystem.hpp"
+#include "Project/RuntimeLauncher.hpp"
+#include "ImGUIUtils/ImGuiUtils.hpp"
 
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>

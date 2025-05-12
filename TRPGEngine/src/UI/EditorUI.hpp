@@ -3,6 +3,9 @@
 #include <filesystem>
 #include <GLFW/glfw3.h>
 
+#include "Engine/EntitySystem/Entity.hpp"
+#include "Engine/EntitySystem/EntityManager.hpp"
+
 class EditorUI {
 public:
     EditorUI(GLFWwindow* window);
@@ -28,7 +31,8 @@ public:
 
     void forceFolderRefresh();
     void handlePlatformEvents(); 
-    void setStatusMessage(const std::string& message); 
+    void setStatusMessage(const std::string& message);
+    void renderEntityInspector(Entity entity, EntityManager& em);
 
     static void glfwFileDropCallback(GLFWwindow* window, int count, const char** paths);
 
@@ -40,6 +44,7 @@ public:
 
 private:
     GLFWwindow* m_window;
+    Entity m_selectedEntity = INVALID_ENTITY;
     bool m_shouldBuildDockLayout = false;
 
     std::string m_saveStatus;
@@ -54,4 +59,7 @@ private:
     bool m_actionAfterPrompt = false;
     bool m_forceRefresh = false;
     
+public:
+    void setSelectedEntity(Entity e) { m_selectedEntity = e; }
+    Entity getSelectedEntity() const { return m_selectedEntity; }
 };

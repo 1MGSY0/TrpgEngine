@@ -8,8 +8,8 @@
 #include <functional>
 #include <json.hpp>
 
-#include "ComponentBase.h"
-#include "ComponentType.h"
+#include "ComponentBase.hpp"
+#include "ComponentType.hpp"
 
 class ComponentRegistry {
 public:

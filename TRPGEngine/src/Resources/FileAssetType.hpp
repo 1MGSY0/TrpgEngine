@@ -7,7 +7,12 @@
 
 enum class FileAssetType {
     Unknown = 0,
-    Texture,
+    Entity,
+    Prefab,
+    Json,
+    Image,
+    Text,
+    Image,
     Model,
     Audio,
     // Extend as needed (e.g., Font, Material, Shader)
@@ -22,7 +27,11 @@ struct FileAssetTypeInfo {
 // Inline registry of supported asset types
 inline const std::vector<FileAssetTypeInfo>& getAllFileAssetTypes() {
     static std::vector<FileAssetTypeInfo> types = {
-        { FileAssetType::Texture, "Texture", { ".png", ".jpg", ".jpeg", ".tga", ".bmp" } },
+        { FileAssetType::Entity, "Entity Instance", { ".entity" }},
+        { FileAssetType::Prefab, "Prefab Template", { ".prefab" }},
+        { FileAssetType::Json, "Json", { ".json" } },
+        { FileAssetType::Text, "Text", { ".txt" } },
+        { FileAssetType::Image, "Image", { ".png", ".jpg", ".jpeg", ".tga", ".bmp" } },
         { FileAssetType::Model,   "Model",   { ".fbx", ".obj", ".gltf", ".glb" } },
         { FileAssetType::Audio,   "Audio",   { ".wav", ".mp3", ".ogg" } }
     };
@@ -40,7 +49,6 @@ inline FileAssetType getFileAssetTypeFromExtension(const std::string& ext) {
     return FileAssetType::Unknown;
 }
 
-// Optional: get a label string from type
 inline std::string getFileAssetTypeName(FileAssetType type) {
     for (const auto& typeInfo : getAllFileAssetTypes()) {
         if (typeInfo.type == type)

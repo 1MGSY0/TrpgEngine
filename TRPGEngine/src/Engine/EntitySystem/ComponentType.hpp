@@ -6,10 +6,13 @@
 #include <json.hpp>
 #include <memory>
 
-#include "ComponentBase.h"
+#include "ComponentBase.hpp"
 
 enum class ComponentType {
     Unknown = 0,
+    Parent,
+    Children,
+    SceneMetadata,
     Character,
     Script,
     // Add more as needed

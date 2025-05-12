@@ -1,12 +1,12 @@
-#include "EditorUI.h"
+#include "EditorUI.hpp"
 
-#include "UI/AssetPanels/CharacterPanel.h"
-#include "UI/AssetPanels/ScriptPanel.h"
+#include "UI/AssetPanels/CharacterPanel.hpp"
+#include "UI/AssetPanels/ScriptPanel.hpp"
 
-#include "Resources/ResourceManager.h"
-#include "Project/ProjectManager.h"
-#include "Project/BuildSystem.h"
-#include "ImGUIUtils/ImGuiUtils.h"
+#include "Resources/ResourceManager.hpp"
+#include "Project/ProjectManager.hpp"
+#include "Project/BuildSystem.hpp"
+#include "ImGUIUtils/ImGuiUtils.hpp"
 #include <imgui.h>
 
 void EditorUI::renderMenuBar() {
@@ -69,26 +69,19 @@ void EditorUI::renderMenuBar() {
                 ImGui::EndPopup();
             }
             if (ImGui::BeginMenu("Import")) {
-                if (ImGui::BeginMenu("Components")) {
-                    for (const auto& info : ComponentTypeRegistry::getAllInfos()) {
-                        if (ImGui::MenuItem(info.key.c_str())) {
-                            std::string path = openFileDialog();
+                if (ImGui::BeginMenu("Assets")) {
+                    for (const auto& info : getAllFileAssetTypes()) {
+                        if (ImGui::MenuItem(info.name.c_str())) {
+                            std::string path = openFileDialog(info.extensions); // pass filters
                             if (!path.empty()) {
-                                auto jsonOpt = ResourceManager::get().loadAssetFile(path);
-                                if (jsonOpt) {
-                                    const auto& j = *jsonOpt;
-                                    if (ResourceManager::get().importComponentFromJson(j, info.type)) {
-                                        ResourceManager::get().setUnsavedChanges(true);
-                                        if (auto* editor = EditorUI::get()) {
-                                            editor->forceFolderRefresh();
-                                        }
-                                    }
-                                }
+                                ResourceManager::get().importFileAsset(path, info.type);
+                                if (auto* editor = EditorUI::get()) editor->forceFolderRefresh();
                             }
                         }
                     }
                     ImGui::EndMenu();
                 }
+
                 ImGui::EndMenu();
             }
             
@@ -142,13 +135,30 @@ void EditorUI::renderMenuBar() {
                     ImGui::EndPopup();
                 }
             }
-            if (ImGui::BeginMenu("New Components")) {
-                for (const auto& info : ComponentTypeRegistry::getAllInfos()) {
-                    std::string label = "New " + info.key;
-                    if (ImGui::MenuItem(label.c_str())) {
-                        auto folder = EditorUI::get()->getSelectedFolder();
-                        ResourceManager::get().createComponent(info.type, folder, "New" + info.key);
+            if (ImGui::BeginMenu("Entities")) {
+                if (ImGui::MenuItem("New Entity")) {
+                    Entity entity = g_entityManager->createEntity();  // Global or passed context
+                    g_editorUI->setSelectedEntity(entity);            // For inspector focus
+                    g_entityManager->addComponent(entity, std::make_shared<TransformComponent>());  // default
+                }
+
+                if (ImGui::BeginMenu("Add Component to Entity")) {
+                    Entity entity = g_editorUI->getSelectedEntity();
+                    if (entity != INVALID_ENTITY) {
+                        for (const auto& info : ComponentTypeRegistry::getAllInfos()) {
+                            if (ImGui::MenuItem(info.key.c_str())) {
+                                auto comp = info.factory();
+                                g_entityManager->addComponent(entity, comp);
+                            }
+                        }
                     }
+                    ImGui::EndMenu();
+                }
+                Entity selected = getSelectedEntity();
+                if (selected != INVALID_ENTITY) {
+                    std::string filename = "MyEntity";
+                    json j = EntitySerializer::serialize(selected, *g_entityManager);
+                    ResourceManager::get().saveAssetFile(j, filename, ".entity");
                 }
                 ImGui::EndMenu();
             }

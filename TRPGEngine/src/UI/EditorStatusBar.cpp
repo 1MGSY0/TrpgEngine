@@ -1,4 +1,4 @@
-#include "EditorUI.h"
+#include "EditorUI.hpp"
 #include <imgui.h>
 
 void EditorUI::renderStatusBar() {

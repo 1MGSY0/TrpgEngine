@@ -6,8 +6,8 @@
 #include <filesystem>
 #include <misc/cpp/imgui_stdlib.h> 
 
-#include "CharacterPanel.h"
-#include "Engine/Entity/Components/CharacterComponent.h"
+#include "CharacterPanel.hpp"
+#include "Engine/EntitySystem/Components/CharacterComponent.hpp"
 
 #include "UI/ImGuiUtils/ImGuiUtils.h"
 #include "UI/EditorUI.h"

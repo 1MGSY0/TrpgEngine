@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Engine/Entity/ComponentBase.h"
-#include "Engine/Entity/ComponentType.h"
+#include "Engine/EntitySystem/ComponentBase.hpp"
+#include "Engine/EntitySystem/ComponentType.hpp"
 #include <json.hpp>
 #include <string>
 #include <unordered_map>

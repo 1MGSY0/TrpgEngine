@@ -1,6 +1,6 @@
 #pragma once
-#include "Engine/Entity/ComponentBase.h"
-#include "Engine/Entity/ComponentType.h"
+#include "Engine/EntitySystem/ComponentBase.hpp"
+#include "Engine/EntitySystem/ComponentType.hpp"
 
 class ScriptComponent : public ComponentBase {
 public:
