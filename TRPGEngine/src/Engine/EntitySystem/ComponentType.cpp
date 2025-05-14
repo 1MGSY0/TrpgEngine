@@ -2,6 +2,9 @@
 #include "ComponentBase.hpp"
 #include "Engine/EntitySystem/Components/CharacterComponent.hpp"
 #include "Engine/EntitySystem/Components/ScriptComponent.hpp"
+#include "Engine/EntitySystem/Components/SceneMetaComponent.hpp"
+#include "Engine/EntitySystem/Components/ParentComponent.hpp"
+#include "Engine/EntitySystem/Components/ChildrenComponent.hpp"
 
 static std::vector<ComponentTypeInfo> componentTypeInfos;
 
@@ -18,11 +21,6 @@ namespace ComponentTypeRegistry {
         return componentTypeInfos;
     }
 
-    std::shared_ptr<ComponentBase> ComponentTypeRegistry::deserializeComponent(ComponentType type, const nlohmann::json& j) {
-        const auto* info = getInfo(type);
-        if (!info || !info->loader) return nullptr;
-        return info->loader(j);
-    }
 
     std::string ComponentTypeRegistry::getDefaultExtension(ComponentType type) {
         const auto* info = getInfo(type);

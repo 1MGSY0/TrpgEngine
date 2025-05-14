@@ -1,6 +1,6 @@
 // ComponentRegistry.cpp
-#include "ComponentRegistry.h"
-#include "ComponentType.h"
+#include "ComponentRegistry.hpp"
+#include "ComponentType.hpp"
 #include <imgui.h>
 #include <iostream>
 #include <algorithm>

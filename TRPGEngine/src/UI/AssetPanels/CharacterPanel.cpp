@@ -9,8 +9,8 @@
 #include "CharacterPanel.hpp"
 #include "Engine/EntitySystem/Components/CharacterComponent.hpp"
 
-#include "UI/ImGuiUtils/ImGuiUtils.h"
-#include "UI/EditorUI.h"
+#include "UI/ImGuiUtils/ImGuiUtils.hpp"
+#include "UI/EditorUI.hpp"
 
 void renderCharacterInspector(std::shared_ptr<CharacterComponent> character) {
     if (!character) {

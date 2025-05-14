@@ -30,6 +30,5 @@ namespace ComponentTypeRegistry {
     const ComponentTypeInfo* getInfo(ComponentType type);
     const std::vector<ComponentTypeInfo>& getAllInfos();
     std::string getDefaultExtension(ComponentType type);
-    std::shared_ptr<ComponentBase> deserializeComponent(ComponentType type, const nlohmann::json& j);
     void registerBuiltins();
-}
+};

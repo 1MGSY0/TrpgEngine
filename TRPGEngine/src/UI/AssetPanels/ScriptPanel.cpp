@@ -5,11 +5,11 @@
 #include <filesystem>
 #include <misc/cpp/imgui_stdlib.h> 
 
-#include "ScriptPanel.h"
-#include "Engine/Entity/Components/ScriptComponent.h"
+#include "ScriptPanel.hpp"
+#include "Engine/EntitySystem/Components/ScriptComponent.hpp"
 
-#include "UI/ImGuiUtils/ImGuiUtils.h"
-#include "UI/EditorUI.h"
+#include "UI/ImGuiUtils/ImGuiUtils.hpp"
+#include "UI/EditorUI.hpp"
 
 void renderScriptInspector(std::shared_ptr<ScriptComponent> script) {
     if (!script) {

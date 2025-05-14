@@ -1,8 +1,7 @@
-#include "ProjectManager.h"
-#include "Engine/Resources/ResourceManager.h"
-#include "Engine/Assets/AssetRegistry.h"
-#include "Engine/Assets/AssetType.h"
-#include "Engine/Assets/AssetBase.h"
+#include "ProjectManager.hpp"
+#include "Resources/ResourceManager.hpp"
+#include "Engine/EntitySystem/EntityManager.hpp"
+#include "Serialization/JsonLoader.hpp"
 
 #include <json.hpp>
 #include <fstream>
@@ -20,28 +19,26 @@ static std::string ensureTrpgExtension(const std::string& path) {
 }
 
 bool ProjectManager::saveProjectToFile(const std::string& filePath) {
-    json j;
-    auto& rm = ResourceManager::get();
-
-    for (const auto& info : AssetTypeRegistry::getAllTypes()) {
-        auto assets = rm.getAssets(info.type);
-        if (!assets.empty()) {
-            json arr;
-            for (const auto& asset : assets)
-                arr.push_back(asset->toJson());
-            j[info.key] = arr;
-        }
-    }
-
-    j["meta"] = {
+    json projectMeta;
+    projectMeta["meta"] = {
         {"name", fs::path(filePath).stem().string()},
         {"saved_at", time(nullptr)},
-        {"version", "0.1"}
+        {"version", "0.2"}
     };
 
-    std::ofstream file(filePath);
-    if (!file.is_open()) return false;
-    file << j.dump(4);
+    fs::path scenesFolder = fs::path("Assets/Scenes");
+    fs::create_directories(scenesFolder);
+
+    for (auto entity : EntityManager::get().getAllEntities()) {
+        json j = EntityManager::get().serializeEntity(entity);
+        std::string name = "entity_" + std::to_string(entity) + ".entity";
+        std::ofstream out(scenesFolder / name);
+        if (out.is_open()) out << j.dump(4);
+    }
+
+    std::ofstream out(filePath);
+    if (!out.is_open()) return false;
+    out << projectMeta.dump(4);
     return true;
 }
 
@@ -57,33 +54,18 @@ bool ProjectManager::loadProject(const std::string& filePath) {
     json j;
     file >> j;
 
-    auto& rm = ResourceManager::get();
-    rm.clear();
+    EntityManager::get().clear();
 
-    for (const auto& info : AssetTypeRegistry::getAllTypes()) {
-        const std::string& key = info.key;
-        if (j.contains(key)) {
-            AssetRegistry::loadFromJsonArray(info.type, j[key]);
+    fs::path scenesFolder = fs::path("Assets/Scenes");
+    if (fs::exists(scenesFolder)) {
+        for (auto& entry : fs::directory_iterator(scenesFolder)) {
+            if (entry.path().extension() == ".entity") {
+                JsonLoader::loadEntityFromFile(entry.path().string(), EntityManager::get());
+            }
         }
     }
 
     setCurrentProjectPath(filePath);
-    rm.setUnsavedChanges(false);
+    ResourceManager::get().setUnsavedChanges(false);
     return true;
-}
-
-void ProjectManager::setCurrentProjectPath(const std::string& filePath) {
-    s_currentProjectPath = ensureTrpgExtension(filePath);
-}
-
-std::string ProjectManager::getCurrentProjectPath() {
-    return s_currentProjectPath;
-}
-
-void ProjectManager::setTempLoadPath(const std::string& filePath) {
-    s_tempLoadPath = ensureTrpgExtension(filePath);
-}
-
-std::string ProjectManager::getTempLoadPath() {
-    return s_tempLoadPath;
 }

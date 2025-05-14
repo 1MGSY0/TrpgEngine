@@ -1,6 +1,6 @@
 #pragma once
-#include "Engine/EntitySystem/ComponentBase.h"
-#include "Engine/EntitySystem/ComponentType.h"
+#include "Engine/EntitySystem/ComponentBase.hpp"
+#include "Engine/EntitySystem/ComponentType.hpp"
 #include "Entity.hpp"
 
 class ParentComponent : public ComponentBase {

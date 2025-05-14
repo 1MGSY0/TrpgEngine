@@ -16,8 +16,8 @@
 #include <backends/imgui_impl_opengl3.h>
 #include <shellapi.h>
 
-#include "UI/EditorUI.h"
-#include "UI/ImGUIUtils/ImGuiUtils.h"
+#include "UI/EditorUI.hpp"
+#include "UI/ImGUIUtils/ImGuiUtils.hpp"
 
 // Use unique_ptr to manage EditorUI automatically
 Application::Application()

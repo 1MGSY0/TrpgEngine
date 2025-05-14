@@ -1,8 +1,7 @@
-#include "BuildSystem.h"
-#include "ProjectManager.h"
-#include "Engine/EntitySystem/ComponentType.h" 
-#include "Resources/ResourceManager.h"
-
+#include "BuildSystem.hpp"
+#include "ProjectManager.hpp"
+#include "Engine/EntitySystem/EntityManager.hpp"
+#include "Resources/ResourceManager.hpp"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -20,65 +19,22 @@ bool BuildSystem::buildProject(const std::string& projectPath, const std::string
     }
 
     fs::create_directories(outputDirectory);
-    auto& rm = ResourceManager::get();
-    json j;
 
-    for (const auto& info : AssetTypeRegistry::getAllTypes()) {
-        auto assets = rm.getAssets(info.type);
-        if (!assets.empty()) {
-            for (const auto& asset : assets)
-                j[info.key].push_back(asset->toJson());
+    fs::path sceneOut = fs::path(outputDirectory) / "Entities";
+    fs::create_directories(sceneOut);
+
+    for (auto entity : EntityManager::get().getAllEntities()) {
+        json j = EntityManager::get().serializeEntity(entity);
+        std::string fileName = "entity_" + std::to_string(entity) + ".entity";
+        std::ofstream out(sceneOut / fileName);
+        if (out.is_open()) {
+            out << j.dump(4);
         }
     }
-
-    std::ofstream dataFile(fs::path(outputDirectory) / "data.json");
-    if (!dataFile.is_open()) {
-        std::cerr << "[BuildSystem] Failed to write data.json.\n";
-        return false;
-    }
-
-    dataFile << j.dump(4);
-    std::cout << "[BuildSystem] Exported data.json.\n";
 
     copyAssets(projectPath + "/Assets", outputDirectory + "/Assets");
     copyRuntime(outputDirectory);
 
     std::cout << "[BuildSystem] Build completed successfully.\n";
     return true;
-}
-
-void BuildSystem::copyAssets(const std::string& from, const std::string& to) {
-    fs::create_directories(to);
-
-    if (!fs::exists(from)) {
-        std::cerr << "[BuildSystem] No assets to copy from: " << from << "\n";
-        return;
-    }
-
-    for (const auto& entry : fs::recursive_directory_iterator(from)) {
-        if (fs::is_regular_file(entry)) {
-            fs::path relativePath = fs::relative(entry.path(), from);
-            fs::path targetPath = fs::path(to) / relativePath;
-            fs::create_directories(targetPath.parent_path());
-
-            try {
-                fs::copy_file(entry.path(), targetPath, fs::copy_options::overwrite_existing);
-                std::cout << "[BuildSystem] Copied asset: " << relativePath << "\n";
-            } catch (const fs::filesystem_error& e) {
-                std::cerr << "[BuildSystem] Failed to copy " << entry.path() << ": " << e.what() << "\n";
-            }
-        }
-    }
-}
-
-void BuildSystem::copyRuntime(const std::string& to) {
-    fs::path runtimeSource = fs::path("bin") / "TRPGRuntime.exe";
-    fs::path runtimeDest = fs::path(to) / "TRPGGame.exe";
-
-    try {
-        fs::copy_file(runtimeSource, runtimeDest, fs::copy_options::overwrite_existing);
-        std::cout << "[BuildSystem] Copied runtime executable.\n";
-    } catch (const fs::filesystem_error& e) {
-        std::cerr << "[BuildSystem] Failed to copy runtime: " << e.what() << "\n";
-    }
 }
