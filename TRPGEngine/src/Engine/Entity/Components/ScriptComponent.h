@@ -8,6 +8,8 @@ public:
 
     std::string getID() const override { return name; }
 
+    AssetType getType() const override { return AssetType::Script; }
+
     nlohmann::json toJson() const override {
         return {
             {"name", name},
@@ -20,9 +22,5 @@ public:
         comp->name = j.value("name", "");
         comp->scriptPath = j.value("path", "");
         return comp;
-    }
-
-    AssetType getType() const override {
-        return AssetType::Script;
     }
 };

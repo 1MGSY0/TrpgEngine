@@ -1,6 +1,5 @@
 #define NOMINMAX
 #include "EditorUI.h"
-#include <imgui.h>
 
 #include <vector>
 #include <algorithm> 
@@ -45,6 +44,7 @@ void EditorUI::renderSceneTabs() {
 
     static std::string saveStatus;
     static std::vector<std::string> sceneTabs = { "Scene 1" };  // initial scene
+    static std::vector<ScenePanel> scenes = { ScenePanel() };   // must match sceneTabs
     static int nextSceneIndex = 2; // for naming new scenes
 
     ImVec2 displaySize = ImGui::GetIO().DisplaySize;
@@ -55,27 +55,26 @@ void EditorUI::renderSceneTabs() {
     ImVec2 panelSize(width, height);
     ImVec2 panelPos(displaySize.x * 0.3f, displaySize.y * 0.15f); // center-ish
 
-    //ImGui::SetNextWindowPos(panelPos, ImGuiCond_Always);
-    //ImGui::SetNextWindowSize(panelSize, ImGuiCond_Always);
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | 
+                             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
+    ImGui::Begin("Scene Panel Shell", nullptr, flags);
 
-    ImGui::Begin("Scene Panel", nullptr, flags);
     if (ImGui::BeginTabBar("SceneTabs")) {
-        // Render each tab
         for (int i = 0; i < sceneTabs.size(); ++i) {
             if (ImGui::BeginTabItem(sceneTabs[i].c_str())) {
-                renderScenePanel();  // your function
+                scenes[i].renderScenePanel();
                 ImGui::EndTabItem();
             }
         }
 
-        // Add "+" button styled as a tab
+        // "+" button to add new scenes
         if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip)) {
             std::string newName = "Scene " + std::to_string(nextSceneIndex++);
             sceneTabs.push_back(newName);
+            scenes.push_back(ScenePanel());  // Ensure both vectors stay in sync
         }
-
+        
         ImGui::EndTabBar();
     }
     ImGui::End();

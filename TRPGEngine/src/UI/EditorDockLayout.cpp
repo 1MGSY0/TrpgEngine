@@ -16,9 +16,10 @@ void EditorUI::initDockLayout() {
     ImGuiID dock_center = main_dock_id;
 
     ImGui::DockBuilderDockWindow("Flow Panel", dock_left);
-    ImGui::DockBuilderDockWindow("Scene Panel", dock_center);
+    ImGui::DockBuilderDockWindow("Scene Panel Shell", dock_center);
     ImGui::DockBuilderDockWindow("Inspector Panel", dock_right);
     ImGui::DockBuilderDockWindow("Assets Panel", dock_bottom);
 
     ImGui::DockBuilderFinish(dockspace_id);
 }
+    

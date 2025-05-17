@@ -24,52 +24,52 @@ namespace JsonLoader {
         return obj;
     }
 
-    // --- CharacterComponent Specialization ---
-    template<>
-    std::shared_ptr<CharacterComponent> loadJsonFile<CharacterComponent>(const std::string& filePath) {
-        std::ifstream in(filePath);
-        if (!in.is_open()) {
-            std::cerr << "[JsonLoader] Failed to open file: " << filePath << std::endl;
-            return nullptr;
-        }
+//     // --- CharacterComponent Specialization ---
+//     template<>
+//     std::shared_ptr<CharacterComponent> loadJsonFile<CharacterComponent>(const std::string& filePath) {
+//         std::ifstream in(filePath);
+//         if (!in.is_open()) {
+//             std::cerr << "[JsonLoader] Failed to open file: " << filePath << std::endl;
+//             return nullptr;
+//         }
 
-        json j;
-        in >> j;
+//         json j;
+//         in >> j;
 
-        auto character = std::make_shared<CharacterComponent>();
-        character->name = j.value("name", "");
-        character->iconImage = j.value("icon", "Assets/Icons/no_image.png");
+//         auto character = std::make_shared<CharacterComponent>();
+//         character->name = j.value("name", "");
+//         character->iconImage = j.value("icon", "Assets/Icons/no_image.png");
 
-        if (j.contains("stats") && j["stats"].is_object()) {
-            for (auto& [key, val] : j["stats"].items()) {
-                character->stats[key] = val.get<int>();
-            }
-        }
+//         if (j.contains("stats") && j["stats"].is_object()) {
+//             for (auto& [key, val] : j["stats"].items()) {
+//                 character->stats[key] = val.get<int>();
+//             }
+//         }
 
-        if (j.contains("states") && j["states"].is_object()) {
-            for (auto& [state, path] : j["states"].items()) {
-                character->stateImages[state] = path.get<std::string>();
-            }
-        }
+//         if (j.contains("states") && j["states"].is_object()) {
+//             for (auto& [state, path] : j["states"].items()) {
+//                 character->stateImages[state] = path.get<std::string>();
+//             }
+//         }
 
-        return character;
-    }
+//         return character;
+//     }
 
-    // --- ScriptComponent Specialization ---
-    template<>
-    std::shared_ptr<ScriptComponent> loadJsonFile<ScriptComponent>(const std::string& filePath) {
-        std::ifstream in(filePath);
-        if (!in.is_open()) {
-            std::cerr << "[JsonLoader] Failed to open file: " << filePath << std::endl;
-            return nullptr;
-        }
+//     // --- ScriptComponent Specialization ---
+//     template<>
+//     std::shared_ptr<ScriptComponent> loadJsonFile<ScriptComponent>(const std::string& filePath) {
+//         std::ifstream in(filePath);
+//         if (!in.is_open()) {
+//             std::cerr << "[JsonLoader] Failed to open file: " << filePath << std::endl;
+//             return nullptr;
+//         }
 
-        json j;
-        in >> j;
+//         json j;
+//         in >> j;
 
-        auto script = std::make_shared<ScriptComponent>();
-        script->name = j.value("name", "");
-        script->scriptPath = j.value("path", "");
-        return script;
-    }
+//         auto script = std::make_shared<ScriptComponent>();
+//         script->name = j.value("name", "");
+//         script->scriptPath = j.value("path", "");
+//         return script;
+//     }
 } 

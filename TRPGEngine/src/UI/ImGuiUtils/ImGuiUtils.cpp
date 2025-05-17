@@ -6,8 +6,6 @@
 
 #include "UI/ScenePanel/ScenePanel.h"
 
-#include <imgui.h>
-#include <Windows.h>
 #include <commdlg.h>
 #include <filesystem>
 #include <iostream>
