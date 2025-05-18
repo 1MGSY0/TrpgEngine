@@ -3,6 +3,7 @@
 #include <vector>
 #include <memory>
 #include <Engine/Entity/Entity.h>
+#include <Engine/Entity/Components/DialogueComponent.h>
 
 
 class ScenePanel {
@@ -12,6 +13,7 @@ public:
 
     void renderScenePanel();                             // Call every frame
     void addEntity(std::shared_ptr<Entity> e); // Called when dragging an asset in
+    void renderTextOverlay(const DialogueComponent& text); // For dialogues and narration
 
 private:
     ImVec2 m_panelSize;                        // For layout reference

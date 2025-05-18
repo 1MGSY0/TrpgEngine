@@ -55,3 +55,15 @@ void ScenePanel::handleDragDrop() {
         ImGui::EndDragDropTarget();
     }
 }
+
+// Text overlay for dialogues and narration
+void ScenePanel::renderTextOverlay(const DialogueComponent& text) {
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    ImVec2 textPos = ImVec2(m_origin.x + 20, m_origin.y + 20);
+    const float lineSpacing = 22.0f; // Adjust based on font size
+
+    for (const auto& line : text.lines) {
+        drawList->AddText(textPos, IM_COL32(255, 255, 255, 255), line.c_str());
+        textPos.y += lineSpacing;
+    }
+}
