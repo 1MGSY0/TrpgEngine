@@ -1,7 +1,8 @@
 #pragma once
 
 #include <json.hpp>
-#include "ComponentType.hpp"
+
+enum class ComponentType;
 
 class ComponentBase {
 public:

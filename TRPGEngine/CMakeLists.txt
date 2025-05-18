@@ -4,6 +4,7 @@ file(GLOB_RECURSE ENGINE_SRC
     ${CMAKE_SOURCE_DIR}/TRPGEngine/src/Engine/*.cpp
     ${CMAKE_SOURCE_DIR}/TRPGEngine/src/Engine/*/*.cpp
     ${CMAKE_SOURCE_DIR}/TRPGEngine/src/Project/*.cpp
+    ${CMAKE_SOURCE_DIR}/TRPGEngine/src/Resources/*.cpp
     ${CMAKE_SOURCE_DIR}/TRPGEngine/src/UI/*.cpp
     ${CMAKE_SOURCE_DIR}/TRPGEngine/src/UI/*/*.cpp
     ${CMAKE_SOURCE_DIR}/TRPGEngine/src/UI/*/*/*.cpp            

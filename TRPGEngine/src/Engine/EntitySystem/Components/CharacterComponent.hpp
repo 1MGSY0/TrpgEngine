@@ -35,7 +35,4 @@ public:
         return comp;
     }
 
-    ComponentType getType() const override {
-        return ComponentType::Character;
-    }
 };

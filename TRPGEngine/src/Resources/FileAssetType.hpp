@@ -12,7 +12,6 @@ enum class FileAssetType {
     Json,
     Image,
     Text,
-    Image,
     Model,
     Audio,
     // Extend as needed (e.g., Font, Material, Shader)

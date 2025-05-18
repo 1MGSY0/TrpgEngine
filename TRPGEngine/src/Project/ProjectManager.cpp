@@ -1,7 +1,6 @@
 #include "ProjectManager.hpp"
 #include "Resources/ResourceManager.hpp"
 #include "Engine/EntitySystem/EntityManager.hpp"
-#include "Serialization/JsonLoader.hpp"
 
 #include <json.hpp>
 #include <fstream>
@@ -58,14 +57,26 @@ bool ProjectManager::loadProject(const std::string& filePath) {
 
     fs::path scenesFolder = fs::path("Assets/Scenes");
     if (fs::exists(scenesFolder)) {
-        for (auto& entry : fs::directory_iterator(scenesFolder)) {
-            if (entry.path().extension() == ".entity") {
-                JsonLoader::loadEntityFromFile(entry.path().string(), EntityManager::get());
-            }
-        }
+        EntityManager::get().loadEntitiesFromFolder(scenesFolder.string());
     }
 
     setCurrentProjectPath(filePath);
     ResourceManager::get().setUnsavedChanges(false);
     return true;
+}
+
+std::string ProjectManager::getCurrentProjectPath() {
+    return s_currentProjectPath;
+}
+
+void ProjectManager::setCurrentProjectPath(const std::string& path) {
+    s_currentProjectPath = path;
+}
+
+std::string ProjectManager::getTempLoadPath() {
+    return s_tempLoadPath;
+}
+
+void ProjectManager::setTempLoadPath(const std::string& path) {
+    s_tempLoadPath = path;
 }
