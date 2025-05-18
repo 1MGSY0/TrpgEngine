@@ -2,6 +2,7 @@
 #include <string>
 #include <filesystem>
 #include <GLFW/glfw3.h>
+#include "UI/FlowPanel/Flowchart.h"
 
 class EditorUI {
 public:
@@ -26,8 +27,6 @@ public:
     void renderStatusBar();
     void showUnsavedChangesPopup();
 
-    
-
     void handlePlatformEvents(); 
     void setStatusMessage(const std::string& message); 
 
@@ -40,6 +39,7 @@ private:
     GLFWwindow* m_window;
     bool m_shouldBuildDockLayout = false;
     
+    Flowchart m_flowChart;
 
     std::string m_saveStatus;
     std::string m_selectedAssetName;

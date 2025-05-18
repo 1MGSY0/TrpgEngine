@@ -9,6 +9,7 @@ class AudioComponent : public AssetBase {
 public:
     std::string name;
     std::string audioPath;
+    float volume = 1.0f;
     bool loop = false;
 
     std::string getID() const override { return name; }
@@ -19,13 +20,16 @@ public:
         return {
             {"name", name},
             {"audioPath", audioPath},
+            {"volume", volume},
             {"loop", loop}
         };
     };
 
     static std::shared_ptr<AudioComponent> fromJson(const nlohmann::json& j) {
         auto comp = std::make_shared<AudioComponent>();
+        comp->name = j.value("name", "");
         comp->audioPath = j.value("audioPath", "");
+        comp->volume = j.value("volume", 1.0f);
         comp->loop = j.value("loop", false);
         return comp;
     }

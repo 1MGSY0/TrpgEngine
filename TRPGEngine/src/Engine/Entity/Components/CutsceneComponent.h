@@ -10,6 +10,7 @@ class CutsceneComponent : public AssetBase {
 public:
     std::string name;
     std::string videoPath;
+    float volume = 1.0f;
 
     std::string getID() const override { return name; }
 
@@ -19,6 +20,7 @@ public:
         return {
             {"name", name},
             {"audioPath", videoPath},
+            {"volume", volume},
         };
     }
 
@@ -26,6 +28,7 @@ public:
         auto comp = std::make_shared<CutsceneComponent>();
         comp->name = j.value("name", "");
         comp->videoPath = j.value("stats", "");
+        comp->volume = j.value("volume", 1.0f);
         return comp;
     }
 };

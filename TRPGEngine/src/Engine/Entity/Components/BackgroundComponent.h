@@ -22,7 +22,8 @@ public:
             {"scale", scale}
         };
     };
-    std::shared_ptr<BackgroundComponent> fromJson(const nlohmann::json& j) {
+
+    static std::shared_ptr<BackgroundComponent> fromJson(const nlohmann::json& j) {
         auto comp = std::make_shared<BackgroundComponent>();
         comp->name = j.value("name", "");
         comp->texturePath = j.value("texture", "");

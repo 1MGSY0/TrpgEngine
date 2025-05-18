@@ -1,6 +1,7 @@
 #include "Entity.h"
 #include "Components/AudioComponent.h"
 #include "Components/BackgroundComponent.h"
+#include "Components/ObjectComponent.h"
 #include "Components/CharacterComponent.h"
 #include "Components/CutsceneComponent.h"
 #include "Components/DialogueComponent.h"
@@ -39,6 +40,11 @@ void Entity::fromJson(const nlohmann::json& j) {
         if (comps.contains("DialogueComponent")) {
             auto comp = std::make_shared<DialogueComponent>();
             comp->fromJson(comps["DialogueComponent"]);
+            addComponent(comp);
+        }
+        if (comps.contains("ObjectComponent")) {
+            auto comp = std::make_shared<ObjectComponent>();
+            comp->fromJson(comps["ObjectComponent"]);
             addComponent(comp);
         }
         if (comps.contains("ScriptComponent")) {

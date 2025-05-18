@@ -23,7 +23,7 @@ public:
         };
     };
 
-    std::shared_ptr<DialogueComponent> fromJson(const nlohmann::json& j) {
+    static std::shared_ptr<DialogueComponent> fromJson(const nlohmann::json& j) {
         auto comp = std::make_shared<DialogueComponent>();
         comp->name = j.value("name", "");
         comp->lines = j.value("lines", std::vector<std::string>{});

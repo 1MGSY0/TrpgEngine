@@ -8,11 +8,11 @@
 #include "UI/ImGuiUtils/ImGuiUtils.h"
 #include "Engine/Assets/AssetRegistry.h"
 #include "Engine/Resources/ResourceManager.h"
-
+#include "SceneManager.h"
+#include "UI/FlowPanel/Flowchart.h"
 #include "UI/ScenePanel/ScenePanel.h"
 
 void EditorUI::renderFlowTabs() {
-
     static std::string saveStatus;
 
     ImVec2 displaySize = ImGui::GetIO().DisplaySize;
@@ -28,7 +28,7 @@ void EditorUI::renderFlowTabs() {
     ImGui::Begin("Flow Panel", nullptr, flags);
     if (ImGui::BeginTabBar("FlowTabs")) {
         if (ImGui::BeginTabItem("Flow")) {
-            ImGui::Text("Flow Graph content...");
+            m_flowChart.render(); 
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Events")) {
@@ -41,42 +41,38 @@ void EditorUI::renderFlowTabs() {
 }
 
 void EditorUI::renderSceneTabs() {
-
-    static std::string saveStatus;
-    static std::vector<std::string> sceneTabs = { "Scene 1" };  // initial scene
-    static std::vector<ScenePanel> scenes = { ScenePanel() };   // must match sceneTabs
-    static int nextSceneIndex = 2; // for naming new scenes
-
     ImVec2 displaySize = ImGui::GetIO().DisplaySize;
     float targetAspect = 867.0f / 628.0f;
     float height = displaySize.y * 0.6f;
     float width  = height * targetAspect;
 
     ImVec2 panelSize(width, height);
-    ImVec2 panelPos(displaySize.x * 0.3f, displaySize.y * 0.15f); // center-ish
+    ImVec2 panelPos(displaySize.x * 0.3f, displaySize.y * 0.15f);
 
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | 
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
                              ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 
     ImGui::Begin("Scene Panel Shell", nullptr, flags);
 
+    auto& sceneTabs = SceneManager::getSceneNames();
+    auto& scenes = SceneManager::getScenePanels();
+
     if (ImGui::BeginTabBar("SceneTabs")) {
-        for (int i = 0; i < sceneTabs.size(); ++i) {
+        for (size_t i = 0; i < sceneTabs.size(); ++i) {
             if (ImGui::BeginTabItem(sceneTabs[i].c_str())) {
                 scenes[i].renderScenePanel();
                 ImGui::EndTabItem();
             }
         }
 
-        // "+" button to add new scenes
         if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip)) {
-            std::string newName = "Scene " + std::to_string(nextSceneIndex++);
-            sceneTabs.push_back(newName);
-            scenes.push_back(ScenePanel());  // Ensure both vectors stay in sync
+            std::string newScene = "Scene " + std::to_string(SceneManager::getNextSceneIndex());
+            SceneManager::addScene(newScene);
         }
-        
+
         ImGui::EndTabBar();
     }
+
     ImGui::End();
 }
 
