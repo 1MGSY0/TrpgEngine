@@ -14,6 +14,8 @@
 #include <json.hpp>
 
 using json = nlohmann::json;
+static bool showRenamePopup = false;
+static char newName[128] = "";
 
 void EditorUI::renderMenuBar() {
     if (ImGui::BeginMenuBar()) {
@@ -105,29 +107,10 @@ void EditorUI::renderMenuBar() {
         // --- EDIT MENU ---
         if (ImGui::BeginMenu("Edit")) {
             if (ImGui::MenuItem("Rename Selected File")) {
-                static char newName[128] = "";
+                showRenamePopup = true;
                 std::string currentName = m_selectedAssetName;
+                strcpy(newName, currentName.c_str());
                 ImGui::OpenPopup("RenameAssetPopup");
-
-                if (ImGui::BeginPopupModal("RenameAssetPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                    ImGui::InputText("New Name", newName, IM_ARRAYSIZE(newName));
-
-                    if (ImGui::Button("Rename")) {
-                        if (strlen(newName) > 0) {
-                            ResourceManager::get().renameAssetFile(currentName, newName);
-                            strcpy(newName, "");
-                            m_selectedAssetName = newName;
-                            ImGui::CloseCurrentPopup();
-                        }
-                    }
-
-                    ImGui::SameLine();
-                    if (ImGui::Button("Cancel")) {
-                        ImGui::CloseCurrentPopup();
-                    }
-
-                    ImGui::EndPopup();
-                }
             }
 
             // --- ENTITY MENU ---
@@ -165,6 +148,41 @@ void EditorUI::renderMenuBar() {
             }
 
             ImGui::EndMenu();
+        }
+
+        // --- POPUP WINDOW ---
+        if (showRenamePopup) {
+            ImGui::OpenPopup("RenameAssetPopup");
+            showRenamePopup = false;
+        }
+
+        if (ImGui::BeginPopupModal("RenameAssetPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::InputText("New Name", newName, IM_ARRAYSIZE(newName));
+
+            if (ImGui::Button("Rename")) {
+                if (strlen(newName) > 0) {
+                    auto* editor = EditorUI::get();
+                    if (editor) {
+                        std::filesystem::path folder = editor->getSelectedFolder();
+                        std::filesystem::path oldPath = folder / m_selectedAssetName;
+                        std::string newNameStr = newName;
+
+                        if (ResourceManager::get().renameAssetFile(oldPath.string(), newNameStr)) {
+                            m_selectedAssetName = newNameStr;
+                        }
+                    }
+        
+                    strcpy(newName, "");
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
         }
 
         if (ImGui::BeginMenu("Select")) {

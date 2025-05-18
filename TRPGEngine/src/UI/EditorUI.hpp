@@ -45,6 +45,8 @@ private:
     GLFWwindow* m_window;
     Entity m_selectedEntity = INVALID_ENTITY;
     bool m_shouldBuildDockLayout = false;
+    float m_statusTimer = 0.0f;
+
 
     std::string m_saveStatus;
     std::string m_selectedFileName;

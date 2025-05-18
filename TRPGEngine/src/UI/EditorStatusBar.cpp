@@ -1,32 +1,30 @@
 #include "EditorUI.hpp"
 #include <imgui.h>
 
-void EditorUI::renderStatusBar() {
-    static float timeSinceStatus = 0.0f;
+void EditorUI::setStatusMessage(const std::string& message) {
+    m_saveStatus = message;
+    m_statusTimer = 0.0f;  // Reset timer when setting new message
+}
 
-    if (!m_saveStatus.empty()) {
-        timeSinceStatus += ImGui::GetIO().DeltaTime;
-        if (timeSinceStatus > 5.0f) {
-            m_saveStatus.clear();
-            timeSinceStatus = 0.0f;
-            return;
-        }
-    } else {
+void EditorUI::renderStatusBar() {
+    if (m_saveStatus.empty()) return;
+
+    m_statusTimer += ImGui::GetIO().DeltaTime;
+    if (m_statusTimer > 5.0f) {
+        m_saveStatus.clear();
+        m_statusTimer = 0.0f;
         return;
     }
 
-    ImVec2 windowSize = ImGui::GetWindowSize();
-    float statusHeight = ImGui::GetTextLineHeightWithSpacing() + 10.0f;
+    // This must match the name used in DockBuilderDockWindow("StatusBar", ...)
+    if (ImGui::Begin("StatusBar", nullptr,
+                     ImGuiWindowFlags_NoTitleBar |
+                     ImGuiWindowFlags_NoCollapse |
+                     ImGuiWindowFlags_NoResize |
+                     ImGuiWindowFlags_NoScrollbar)) {
 
-    ImGui::SetCursorPosY(windowSize.y - statusHeight);
-    ImGui::Separator();
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5.0f);
+        ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.4f, 1.0f), "%s", m_saveStatus.c_str());
+    }
 
-    ImGui::BeginChild("StatusBar", ImVec2(0, statusHeight), false,
-                      ImGuiWindowFlags_NoScrollbar |
-                      ImGuiWindowFlags_NoScrollWithMouse |
-                      ImGuiWindowFlags_NoDecoration);
-
-    ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.4f, 1.0f), "%s", m_saveStatus.c_str());
-    ImGui::EndChild();
+    ImGui::End();
 }

@@ -84,6 +84,7 @@ void EditorUI::beginFrame() {
 
 void EditorUI::render() {
     ImGuiIO& io = ImGui::GetIO();
+
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(io.DisplaySize);
 
@@ -99,20 +100,24 @@ void EditorUI::render() {
     ImGui::Begin("MainDockSpace", nullptr, windowFlags);
     ImGui::PopStyleVar(2);
 
+    // Ensure full screen background window has no padding
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGuiID dockspace_id = ImGui::GetID("EditorDockspace");
-    ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_NoTabBar);
+    ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+    ImGui::PopStyleVar();
 
     if (m_shouldBuildDockLayout) {
-        initDockLayout();
+        initDockLayout();\
         m_shouldBuildDockLayout = false;
     }
 
     renderMenuBar();
-    renderFlowTabs();
-    renderSceneTabs();
-    renderInspectorTabs();
-    renderAssetBrowser();  
-    renderStatusBar(); 
+    renderFlowTabs();        // "Flow"
+    renderSceneTabs();       // "Scene"
+    renderInspectorTabs();   // "Entity Inspector"
+    renderAssetBrowser();    // "Assets"
+    renderStatusBar();       // "Status Bar"
+
     showUnsavedChangesPopup();
 
     ImGui::End();
@@ -145,11 +150,6 @@ void EditorUI::handlePlatformEvents() {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-}
-
-
-void EditorUI::setStatusMessage(const std::string& message) {
-    m_saveStatus = message;
 }
 
 void EditorUI::glfwFileDropCallback(GLFWwindow* window, int count, const char** paths) {
