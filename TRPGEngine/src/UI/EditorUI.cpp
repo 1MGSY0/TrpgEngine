@@ -111,7 +111,8 @@ void EditorUI::render() {
     renderFlowTabs();
     renderSceneTabs();
     renderInspectorTabs();
-    renderAssetBrowser();        
+    renderAssetBrowser();  
+    renderStatusBar(); 
     showUnsavedChangesPopup();
 
     ImGui::End();

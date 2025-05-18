@@ -1,31 +1,30 @@
 #define NOMINMAX
 #include "EditorUI.hpp"
-#include <imgui.h>
 
+#include <imgui.h>
 #include <vector>
 #include <algorithm> 
 #include <iostream>
+#include <filesystem>
 
 #include "UI/ImGuiUtils/ImGuiUtils.hpp"
 #include "Resources/ResourceManager.hpp"
+#include "Engine/EntitySystem/EntityManager.hpp"
 #include "Engine/EntitySystem/Components/CharacterComponent.hpp"
 #include "Engine/EntitySystem/Components/ScriptComponent.hpp"
+#include "Engine/EntitySystem/ComponentRegistry.hpp"
 
 #include "UI/ScenePanel/ScenePanel.hpp"
-#include "UI/InspectorPanels/EntityInspectorPanel.hpp"
+#include "UI/EntityInspectorPanel.hpp"
 
 
 void EditorUI::renderFlowTabs() {
-
     static std::string saveStatus;
 
     ImVec2 displaySize = ImGui::GetIO().DisplaySize;
-    float height = displaySize.y * 0.65f;           // scale relative to screen height
-    float width  = height * 0.415f;                 // maintain original ratio
-    ImVec2 pos(0, displaySize.y * 0.10f);           // left side
-
-    //ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
-    //ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
+    float height = displaySize.y * 0.65f;
+    float width  = height * 0.415f;
+    ImVec2 pos(0, displaySize.y * 0.10f);
 
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 
@@ -45,10 +44,9 @@ void EditorUI::renderFlowTabs() {
 }
 
 void EditorUI::renderSceneTabs() {
-
     static std::string saveStatus;
-    static std::vector<std::string> sceneTabs = { "Scene 1" };  // initial scene
-    static int nextSceneIndex = 2; // for naming new scenes
+    static std::vector<std::string> sceneTabs = { "Scene 1" };
+    static int nextSceneIndex = 2;
 
     ImVec2 displaySize = ImGui::GetIO().DisplaySize;
     float targetAspect = 867.0f / 628.0f;
@@ -56,24 +54,19 @@ void EditorUI::renderSceneTabs() {
     float width  = height * targetAspect;
 
     ImVec2 panelSize(width, height);
-    ImVec2 panelPos(displaySize.x * 0.3f, displaySize.y * 0.15f); // center-ish
-
-    //ImGui::SetNextWindowPos(panelPos, ImGuiCond_Always);
-    //ImGui::SetNextWindowSize(panelSize, ImGuiCond_Always);
+    ImVec2 panelPos(displaySize.x * 0.3f, displaySize.y * 0.15f);
 
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 
     ImGui::Begin("Scene Panel", nullptr, flags);
     if (ImGui::BeginTabBar("SceneTabs")) {
-        // Render each tab
         for (int i = 0; i < sceneTabs.size(); ++i) {
             if (ImGui::BeginTabItem(sceneTabs[i].c_str())) {
-                renderScenePanel();  // your function
+                renderScenePanel();
                 ImGui::EndTabItem();
             }
         }
 
-        // Add "+" button styled as a tab
         if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip)) {
             std::string newName = "Scene " + std::to_string(nextSceneIndex++);
             sceneTabs.push_back(newName);
@@ -86,8 +79,8 @@ void EditorUI::renderSceneTabs() {
 
 void EditorUI::renderInspectorTabs() {
     if (ImGui::Begin("Inspector")) {
-        Entity selected = getSelectedEntity();  // assumes your EditorUI tracks selected entity
-        renderEntityInspector(selected, *g_entityManager);
+        Entity selected = getSelectedEntity();
+        renderEntityInspector(selected, EntityManager::get());
     }
     ImGui::End();
 }
@@ -99,17 +92,14 @@ void EditorUI::renderAssetBrowser() {
     ImVec2 panelSize = ImGui::GetContentRegionAvail();
     float leftPaneWidth = panelSize.x * 0.3f;
 
-    // File Tree
     ImGui::BeginChild("AssetFolders", ImVec2(leftPaneWidth, 0), true);
     renderFolderTree(m_assetsRoot, m_assetsRoot);
     ImGui::EndChild();
 
     ImGui::SameLine();
 
-    // File Preview
     ImGui::BeginChild("AssetPreview", ImVec2(0, 0), true);
     renderFolderPreview(m_selectedFolder);
-
     ImGui::EndChild();
 
     ImGui::End();
@@ -149,7 +139,6 @@ void EditorUI::renderFolderTree(const std::filesystem::path& path, const std::fi
                     std::error_code ec;
                     std::filesystem::rename(dropped, dest, ec);
                     if (!ec) {
-                        AssetRegistry::importFile(dest.string());
                         ResourceManager::get().setUnsavedChanges(true);
                         setStatusMessage("Moved to: " + dest.string());
                     }
@@ -171,7 +160,6 @@ void EditorUI::renderFolderTree(const std::filesystem::path& path, const std::fi
             std::error_code ec;
             std::filesystem::copy_file(file, dest, std::filesystem::copy_options::overwrite_existing, ec);
             if (!ec) {
-                AssetRegistry::importFile(dest.string());
                 ResourceManager::get().setUnsavedChanges(true);
                 setStatusMessage("Imported: " + dest.string());
             }
@@ -198,12 +186,6 @@ void EditorUI::renderFolderPreview(const std::filesystem::path& folder) {
 
         if (ImGui::Button(name.c_str(), ImVec2(cellSize, cellSize * 0.7f))) {
             m_selectedAssetName = entry.path().filename().string();
-
-            AssetType type = AssetRegistry::getTypeFromExtension(entry.path().string());
-            if (const auto* info = AssetTypeRegistry::getInfo(type))
-                m_selectedAssetType = info->key;
-            else
-                m_selectedAssetType = "Unknown";
         }
 
         if (entry.is_regular_file() && ImGui::BeginDragDropSource()) {
@@ -217,7 +199,6 @@ void EditorUI::renderFolderPreview(const std::filesystem::path& folder) {
 
     ImGui::Columns(1);
 
-    // Internal Drop
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATHS")) {
             const char* dropped = static_cast<const char*>(payload->Data);
@@ -226,7 +207,6 @@ void EditorUI::renderFolderPreview(const std::filesystem::path& folder) {
                 std::error_code ec;
                 std::filesystem::rename(dropped, dest, ec);
                 if (!ec) {
-                    AssetRegistry::importFile(dest.string());
                     ResourceManager::get().setUnsavedChanges(true);
                     setStatusMessage("Moved into preview: " + dest.string());
                 }
@@ -235,14 +215,12 @@ void EditorUI::renderFolderPreview(const std::filesystem::path& folder) {
         ImGui::EndDragDropTarget();
     }
 
-    // External Drop
     if (!s_pendingDroppedPaths.empty() && ImGui::IsWindowHovered()) {
         for (const auto& path : s_pendingDroppedPaths) {
             auto dest = folder / std::filesystem::path(path).filename();
             std::error_code ec;
             std::filesystem::copy_file(path, dest, std::filesystem::copy_options::overwrite_existing, ec);
             if (!ec) {
-                AssetRegistry::importFile(dest.string());
                 ResourceManager::get().setUnsavedChanges(true);
                 setStatusMessage("Imported into preview: " + dest.string());
             }
@@ -250,3 +228,4 @@ void EditorUI::renderFolderPreview(const std::filesystem::path& folder) {
         s_pendingDroppedPaths.clear();
     }
 }
+

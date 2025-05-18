@@ -4,111 +4,105 @@
 #include "UI/AssetPanels/ScriptPanel.hpp"
 
 #include "Resources/ResourceManager.hpp"
+#include "Engine/EntitySystem/EntityManager.hpp"
+#include "Engine/EntitySystem/ComponentRegistry.hpp"
 #include "Project/ProjectManager.hpp"
 #include "Project/BuildSystem.hpp"
 #include "ImGUIUtils/ImGuiUtils.hpp"
 #include <imgui.h>
+#include <filesystem>
+#include <json.hpp>
+
+using json = nlohmann::json;
 
 void EditorUI::renderMenuBar() {
     if (ImGui::BeginMenuBar()) {
+        // --- FILE MENU ---
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("New")) {
+
+            if (ImGui::MenuItem("New Project")) {
                 if (ResourceManager::get().hasUnsavedChanges()) {
                     ImGui::OpenPopup("Unsaved Changes");
                     m_showUnsavedPrompt = true;
                     m_actionAfterPrompt = true;
                 } else {
                     ResourceManager::get().clear();
-                    ProjectManager::setCurrentProjectPath(""); 
+                    EntityManager::get().clear();
+                    ProjectManager::setCurrentProjectPath("");
                     ResourceManager::get().setUnsavedChanges(true);
                 }
             }
 
-            if (ImGui::MenuItem("Open...")) {
-                std::string file = openFileDialog();
-                if (!file.empty()) {
+            if (ImGui::MenuItem("Open Project...")) {
+                std::string path = openFileDialog();
+                if (!path.empty()) {
                     if (ResourceManager::get().hasUnsavedChanges()) {
                         m_showUnsavedPrompt = true;
                         m_actionAfterPrompt = false;
-                        ProjectManager::setTempLoadPath(file);  // <-- Store path to use after prompt
+                        ProjectManager::setTempLoadPath(path);
                     } else {
-                        ProjectManager::loadProject(file);
+                        ProjectManager::loadProject(path);
                     }
                 }
             }
 
-            if (ImGui::MenuItem("Save")) {
+            if (ImGui::MenuItem("Save Project")) {
                 std::string path = ProjectManager::getCurrentProjectPath();
-                if (path.empty()) {
-                    path = saveFileDialog();
-                    if (path.empty()) {
-                        // just skip save, do nothing
-                    } else {
-                        ProjectManager::setCurrentProjectPath(path);
-                        ProjectManager::save();
-                        ResourceManager::get().setUnsavedChanges(false);
-                    }
-                }
-            }
+                if (path.empty()) path = saveFileDialog();
 
-            if (ImGui::MenuItem("Save As...")) {
-                std::string file = saveFileDialog();
-                if (!file.empty()) {
-                    ProjectManager::saveProjectToFile(file);  // use the full path
-                    ProjectManager::setCurrentProjectPath(file);
+                if (!path.empty()) {
+                    ProjectManager::setCurrentProjectPath(path);
+                    ProjectManager::save();
                     ResourceManager::get().setUnsavedChanges(false);
                 }
             }
-            
-            if (ImGui::BeginPopupModal("Missing Project Path", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                ImGui::Text("You must save the project before building.\n\n");
-                ImGui::Separator();
-                if (ImGui::Button("OK")) {
-                    ImGui::CloseCurrentPopup();
+
+            if (ImGui::MenuItem("Save Project As...")) {
+                std::string path = saveFileDialog();
+                if (!path.empty()) {
+                    ProjectManager::saveProjectToFile(path);
+                    ProjectManager::setCurrentProjectPath(path);
+                    ResourceManager::get().setUnsavedChanges(false);
                 }
-                ImGui::EndPopup();
             }
+
             if (ImGui::BeginMenu("Import")) {
                 if (ImGui::BeginMenu("Assets")) {
-                    for (const auto& info : getAllFileAssetTypes()) {
-                        if (ImGui::MenuItem(info.name.c_str())) {
-                            std::string path = openFileDialog(info.extensions); // pass filters
+                    for (const FileAssetTypeInfo& asset : getAllFileAssetTypes()) {
+                        if (ImGui::MenuItem(asset.name.c_str())) {
+                            std::string filter = convertExtensionsToFilter(asset.extensions);
+                            std::string path = openFileDialog(filter.c_str());
                             if (!path.empty()) {
-                                ResourceManager::get().importFileAsset(path, info.type);
-                                if (auto* editor = EditorUI::get()) editor->forceFolderRefresh();
+                                ResourceManager::get().importFileAsset(path, asset.type);
+                                EditorUI::get()->forceFolderRefresh();
                             }
                         }
                     }
                     ImGui::EndMenu();
                 }
-
                 ImGui::EndMenu();
             }
-            
+
             if (ImGui::BeginMenu("Export")) {
-                if (ImGui::BeginMenu("Build")) {
-                    if (ImGui::MenuItem("Build Project")) {
-                        const std::string& projectPath = ProjectManager::getCurrentProjectPath();
-                
-                        if (projectPath.empty()) {
-                            ImGui::OpenPopup("Missing Project Path");
-                        } else {
-                            std::string exportPath = openFileDialog();
-                            if (!exportPath.empty()) {
-                                bool success = BuildSystem::buildProject(projectPath, exportPath);
-                                m_saveStatus = success ? "Build successful." : "Build failed.";
-                            }
+                if (ImGui::MenuItem("Build Project")) {
+                    std::string path = ProjectManager::getCurrentProjectPath();
+                    if (path.empty()) {
+                        ImGui::OpenPopup("Missing Project Path");
+                    } else {
+                        std::string out = openFileDialog();
+                        if (!out.empty()) {
+                            bool success = BuildSystem::buildProject(path, out);
+                            m_saveStatus = success ? "Build successful." : "Build failed.";
                         }
                     }
-                    ImGui::EndMenu();
                 }
-
                 ImGui::EndMenu();
             }
 
-            ImGui::EndMenu(); 
+            ImGui::EndMenu();
         }
 
+        // --- EDIT MENU ---
         if (ImGui::BeginMenu("Edit")) {
             if (ImGui::MenuItem("Rename Selected File")) {
                 static char newName[128] = "";
@@ -135,33 +129,41 @@ void EditorUI::renderMenuBar() {
                     ImGui::EndPopup();
                 }
             }
+
+            // --- ENTITY MENU ---
             if (ImGui::BeginMenu("Entities")) {
+
                 if (ImGui::MenuItem("New Entity")) {
-                    Entity entity = g_entityManager->createEntity();  // Global or passed context
-                    g_editorUI->setSelectedEntity(entity);            // For inspector focus
-                    g_entityManager->addComponent(entity, std::make_shared<TransformComponent>());  // default
+                    Entity e = EntityManager::get().createEntity();
+                    setSelectedEntity(e);
                 }
 
-                if (ImGui::BeginMenu("Add Component to Entity")) {
-                    Entity entity = g_editorUI->getSelectedEntity();
-                    if (entity != INVALID_ENTITY) {
+                if (ImGui::BeginMenu("Add Component to Selected")) {
+                    Entity selected = getSelectedEntity();
+                    if (selected != INVALID_ENTITY) {
                         for (const auto& info : ComponentTypeRegistry::getAllInfos()) {
                             if (ImGui::MenuItem(info.key.c_str())) {
                                 auto comp = info.factory();
-                                g_entityManager->addComponent(entity, comp);
+                                EntityManager::get().addComponent(selected, comp);
                             }
                         }
+                    } else {
+                        ImGui::TextDisabled("No entity selected");
                     }
                     ImGui::EndMenu();
                 }
-                Entity selected = getSelectedEntity();
-                if (selected != INVALID_ENTITY) {
-                    std::string filename = "MyEntity";
-                    json j = EntitySerializer::serialize(selected, *g_entityManager);
-                    ResourceManager::get().saveAssetFile(j, filename, ".entity");
+
+                if (ImGui::MenuItem("Save Selected Entity as .entity")) {
+                    Entity selected = getSelectedEntity();
+                    if (selected != INVALID_ENTITY) {
+                        json j = EntityManager::get().serializeEntity(selected);
+                        ResourceManager::get().saveAssetFile(j, "entity_" + std::to_string(selected), ".entity");
+                    }
                 }
+
                 ImGui::EndMenu();
             }
+
             ImGui::EndMenu();
         }
 

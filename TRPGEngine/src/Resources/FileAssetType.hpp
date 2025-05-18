@@ -56,3 +56,13 @@ inline std::string getFileAssetTypeName(FileAssetType type) {
     }
     return "Unknown";
 }
+
+inline std::string convertExtensionsToFilter(const std::vector<std::string>& extensions) {
+    std::string filter;
+    for (size_t i = 0; i < extensions.size(); ++i) {
+        filter += "*." + extensions[i];
+        if (i != extensions.size() - 1) filter += ";";
+    }
+    return filter;
+}
+

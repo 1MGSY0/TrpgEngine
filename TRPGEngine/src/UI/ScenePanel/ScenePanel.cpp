@@ -1,4 +1,4 @@
-#include "ScenePanel.h"
+#include "ScenePanel.hpp"
 #include <imgui.h>
 #include <memory>
 

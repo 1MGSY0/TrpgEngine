@@ -32,7 +32,6 @@ public:
     void forceFolderRefresh();
     void handlePlatformEvents(); 
     void setStatusMessage(const std::string& message);
-    void renderEntityInspector(Entity entity, EntityManager& em);
 
     static void glfwFileDropCallback(GLFWwindow* window, int count, const char** paths);
 
@@ -49,6 +48,7 @@ private:
 
     std::string m_saveStatus;
     std::string m_selectedFileName;
+    std::string m_selectedAssetName;
     std::filesystem::path m_assetsRoot = "Runtime";        // base folder
     std::filesystem::path m_selectedFolder = m_assetsRoot; // Currently open folder
 

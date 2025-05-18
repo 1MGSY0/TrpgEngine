@@ -6,7 +6,7 @@
 #include <json.hpp>
 #include <memory>
 
-#include "ComponentBase.hpp"
+#include "ComponentBase.hpp" 
 
 enum class ComponentType {
     Unknown = 0,
