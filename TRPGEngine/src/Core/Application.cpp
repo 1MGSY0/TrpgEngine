@@ -90,23 +90,44 @@ void Application::run() {
 
 void Application::mainLoop() {
     while (!glfwWindowShouldClose(m_window)) {
+        // --- Handle events
+        glfwPollEvents();
+
+        // --- Begin ImGui Frame
         m_editorUI->handlePlatformEvents();
         m_editorUI->beginFrame();
-        m_editorUI->render();
+
+        // --- Game and Editor Update
+        update();
+
+        // --- Rendering (game scene + UI)
+        render();
+
+        // --- Finalize Frame
         m_editorUI->endFrame();
     }
 }
 
 void Application::initEngine() {
-    std::cout << "Engine Initialized (stub)\n";
+    // Initialize core systems like
+    // - ResourceManager
+    // - EntityManager
+    // - SceneRuntime or GameLoop
+    // - ScriptEngine
+    std::cout << "Engine Initialized\n";
 }
 
 void Application::update() {
-    // Future: Tick subsystems, input, scripting, etc.
+    // Game simulation logic, scripting, input, etc.
+    // e.g. GameSceneManager::get().update();
 }
 
 void Application::render() {
-    // No need to clear manually if ImGui handles it
-    // If needed, move glClear inside endFrame
+    // Game rendering logic
+    // e.g. GameSceneManager::get().render();
+
+    // UI rendering (editor overlay or in-game UI)
+    m_editorUI->render();
+    SceneRuntime::get().update();
 }
 
