@@ -1,4 +1,7 @@
 #include "ScenePanel.hpp"
+#include "Engine/EntitySystem/EntityManager.hpp"
+#include "Engine/EntitySystem/Components/TransformComponent.hpp"
+#include <imgui_internal.h>
 
 ScenePanel::ScenePanel() {}
 
@@ -8,59 +11,60 @@ void ScenePanel::renderScenePanel() {
     m_panelSize = ImGui::GetContentRegionAvail();
     m_origin = ImGui::GetCursorScreenPos();
 
-    // Render background
+    // Draw background
     ImDrawList* drawList = ImGui::GetWindowDrawList();
-    drawList->AddRectFilled(m_origin, ImVec2(m_origin.x + m_panelSize.x, m_origin.y + m_panelSize.y), IM_COL32(50, 50, 50, 255));
+    drawList->AddRectFilled(
+        m_origin,
+        ImVec2(m_origin.x + m_panelSize.x, m_origin.y + m_panelSize.y),
+        IM_COL32(50, 50, 50, 255)
+    );
 
-    // Draw entities
-    for (auto& entity : m_entities) {
-        renderEntity(entity);
+    for (Entity entity : EntityManager::get().getAllEntities()) {
+        if (EntityManager::get().hasComponent(entity, ComponentType::Transform))
+            renderEntity(entity);
     }
 
-    // Drag & Drop
     handleDragDrop();
 }
 
-void ScenePanel::addEntity(std::shared_ptr<Entity> e) {
-    m_entities.push_back(e);
-}
+void ScenePanel::renderEntity(Entity entity) {
+    auto transformBase = EntityManager::get().getComponent(entity, ComponentType::Transform);
+    if (!transformBase) return;
 
-void ScenePanel::renderEntity(const std::shared_ptr<Entity>& entity) {
-    ImVec2 pos = ImVec2(m_origin.x + entity->position.x, m_origin.y + entity->position.y);
-    ImVec2 size = entity->size;
+    auto transform = std::static_pointer_cast<TransformComponent>(transformBase);
+    ImVec2 pos = ImVec2(m_origin.x + transform->position.x, m_origin.y + transform->position.y);
+    ImVec2 size = transform->size;
 
-    if (entity->textureID) {
-        ImGui::GetWindowDrawList()->AddImage(
-            (ImTextureID)entity->textureID,
-            pos,
-            ImVec2(pos.x + size.x, pos.y + size.y)
-        );
-    }
 
-    // Make resizable via ImGui invisible handle
+    // Resize logic
     ImGui::SetCursorScreenPos(ImVec2(pos.x + size.x - 10, pos.y + size.y - 10));
-    ImGui::InvisibleButton(("##resize" + entity->getId()).c_str(), ImVec2(10, 10));
+    ImGui::InvisibleButton(("##resize" + std::to_string(entity)).c_str(), ImVec2(10, 10));
+
     if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-        entity->size.x += ImGui::GetIO().MouseDelta.x;
-        entity->size.y += ImGui::GetIO().MouseDelta.y;
+        transform->size.x += ImGui::GetIO().MouseDelta.x;
+        transform->size.y += ImGui::GetIO().MouseDelta.y;
     }
 }
 
 void ScenePanel::handleDragDrop() {
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_CHARACTER")) {
-            auto entity = *(std::shared_ptr<Entity>*)payload->Data;
-            addEntity(entity); // Place in scene
+            Entity droppedEntity = *(Entity*)payload->Data;
+
+            // Ensure Transform exists
+            if (!EntityManager::get().hasComponent(droppedEntity, ComponentType::Transform)) {
+                auto transform = std::make_shared<TransformComponent>();
+                EntityManager::get().addComponent(droppedEntity, transform);
+            }
         }
         ImGui::EndDragDropTarget();
     }
 }
 
-// Text overlay for dialogues and narration
 void ScenePanel::renderTextOverlay(const DialogueComponent& text) {
     ImDrawList* drawList = ImGui::GetWindowDrawList();
     ImVec2 textPos = ImVec2(m_origin.x + 20, m_origin.y + 20);
-    const float lineSpacing = 22.0f; // Adjust based on font size
+    const float lineSpacing = 22.0f;
 
     for (const auto& line : text.lines) {
         drawList->AddText(textPos, IM_COL32(255, 255, 255, 255), line.c_str());

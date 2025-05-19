@@ -14,15 +14,12 @@ public:
     ~ScenePanel();
 
     void renderScenePanel();                             // Call every frame
-    void addEntity(std::shared_ptr<Entity> e); // Called when dragging an asset in
     void renderTextOverlay(const DialogueComponent& text); // For dialogues and narration
 
 private:
     ImVec2 m_panelSize;                        // For layout reference
     ImVec2 m_origin;                           // Top-left of scene window
 
-    std::vector<std::shared_ptr<Entity>> m_entities;
-
-    void renderEntity(const std::shared_ptr<Entity>& entity);
+    void renderEntity(Entity entity);
     void handleDragDrop();
 };

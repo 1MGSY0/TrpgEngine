@@ -16,7 +16,8 @@ enum class ComponentType {
     Character,
     Script,
     Dialogue,
-    FlowNode
+    FlowNode,
+    Transform,
     // Add more as needed
 };
 

@@ -7,6 +7,7 @@
 #include "Engine/EntitySystem/Components/ChildrenComponent.hpp"
 #include "Engine/EntitySystem/Components/DialogueComponent.hpp"
 #include "Engine/EntitySystem/Components/FlowNodeComponent.hpp"
+#include "Engine/EntitySystem/Components/TransformComponent.hpp"
 
 
 static std::vector<ComponentTypeInfo> componentTypeInfos;
@@ -112,6 +113,18 @@ namespace ComponentTypeRegistry {
                 []() {
                     return std::make_shared<FlowNodeComponent>();
                 })
+        });
+
+        componentTypeInfos.emplace_back(ComponentTypeInfo{
+            ComponentType::Transform,
+            "transform",
+            { ".json" },
+            [](const nlohmann::json& j) {
+                return TransformComponent::fromJson(j);
+            },
+            []() {
+                return std::make_shared<TransformComponent>();
+            }
         });
 
         // Add more component types here as needed
