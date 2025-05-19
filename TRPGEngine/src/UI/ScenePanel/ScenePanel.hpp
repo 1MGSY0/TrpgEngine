@@ -15,6 +15,7 @@ public:
 
     void renderScenePanel();                             // Call every frame
     void renderTextOverlay(const DialogueComponent& text); // For dialogues and narration
+    void initSceneFrameBuffer();                        // Initialize framebuffer for scene rendering
 
 private:
     ImVec2 m_panelSize;                        // For layout reference
