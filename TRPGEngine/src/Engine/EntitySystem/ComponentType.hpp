@@ -10,11 +10,13 @@
 
 enum class ComponentType {
     Unknown = 0,
+    SceneMetadata,
     Parent,
     Children,
-    SceneMetadata,
     Character,
     Script,
+    Dialogue,
+    FlowNode
     // Add more as needed
 };
 

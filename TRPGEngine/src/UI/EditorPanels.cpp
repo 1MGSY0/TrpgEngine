@@ -14,6 +14,8 @@
 #include "Engine/EntitySystem/Components/ScriptComponent.hpp"
 #include "Engine/EntitySystem/ComponentRegistry.hpp"
 
+#include "UI/SceneManager.hpp"
+#include "UI/FlowPanel/Flowchart.hpp"
 #include "UI/ScenePanel/ScenePanel.hpp"
 #include "UI/EntityInspectorPanel.hpp"
 
@@ -22,16 +24,19 @@ void EditorUI::renderFlowTabs() {
     static std::string saveStatus;
 
     ImVec2 displaySize = ImGui::GetIO().DisplaySize;
-    float height = displaySize.y * 0.65f;
-    float width  = height * 0.415f;
-    ImVec2 pos(0, displaySize.y * 0.10f);
+    float height = displaySize.y * 0.65f;           // scale relative to screen height
+    float width  = height * 0.415f;                 // maintain original ratio
+    ImVec2 pos(0, displaySize.y * 0.10f);           // left side
+
+    //ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
+    //ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
 
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 
     ImGui::Begin("Flow Panel", nullptr, flags);
     if (ImGui::BeginTabBar("FlowTabs")) {
         if (ImGui::BeginTabItem("Flow")) {
-            ImGui::Text("Flow Graph content...");
+            m_flowChart.render(); 
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Events")) {
@@ -44,10 +49,6 @@ void EditorUI::renderFlowTabs() {
 }
 
 void EditorUI::renderSceneTabs() {
-    static std::string saveStatus;
-    static std::vector<std::string> sceneTabs = { "Scene 1" };
-    static int nextSceneIndex = 2;
-
     ImVec2 displaySize = ImGui::GetIO().DisplaySize;
     float targetAspect = 867.0f / 628.0f;
     float height = displaySize.y * 0.6f;
@@ -56,26 +57,33 @@ void EditorUI::renderSceneTabs() {
     ImVec2 panelSize(width, height);
     ImVec2 panelPos(displaySize.x * 0.3f, displaySize.y * 0.15f);
 
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+                             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 
     ImGui::Begin("Scene Panel", nullptr, flags);
+
+    auto& sceneTabs = SceneManager::getSceneNames();
+    auto& scenes = SceneManager::getScenePanels();
+
     if (ImGui::BeginTabBar("SceneTabs")) {
-        for (int i = 0; i < sceneTabs.size(); ++i) {
+        for (size_t i = 0; i < sceneTabs.size(); ++i) {
             if (ImGui::BeginTabItem(sceneTabs[i].c_str())) {
-                renderScenePanel();
+                scenes[i].renderScenePanel();
                 ImGui::EndTabItem();
             }
         }
 
         if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip)) {
-            std::string newName = "Scene " + std::to_string(nextSceneIndex++);
-            sceneTabs.push_back(newName);
+            std::string newScene = "Scene " + std::to_string(SceneManager::getNextSceneIndex());
+            SceneManager::addScene(newScene);
         }
 
         ImGui::EndTabBar();
     }
+
     ImGui::End();
 }
+
 
 void EditorUI::renderInspectorTabs() {
     if (ImGui::Begin("Inspector")) {

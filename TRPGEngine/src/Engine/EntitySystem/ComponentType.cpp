@@ -5,6 +5,9 @@
 #include "Engine/EntitySystem/Components/SceneMetaComponent.hpp"
 #include "Engine/EntitySystem/Components/ParentComponent.hpp"
 #include "Engine/EntitySystem/Components/ChildrenComponent.hpp"
+#include "Engine/EntitySystem/Components/DialogueComponent.hpp"
+#include "Engine/EntitySystem/Components/FlowNodeComponent.hpp"
+
 
 static std::vector<ComponentTypeInfo> componentTypeInfos;
 
@@ -82,6 +85,36 @@ namespace ComponentTypeRegistry {
                     return std::make_shared<ScriptComponent>();
                 })
         });
+
+        componentTypeInfos.emplace_back(ComponentTypeInfo{
+            ComponentType::Dialogue,
+            "dialogue",
+            { ".json" },
+            std::function<std::shared_ptr<ComponentBase>(const nlohmann::json&)>(
+                [](const nlohmann::json& j) {
+                    return DialogueComponent::fromJson(j);
+                }),
+            std::function<std::shared_ptr<ComponentBase>()>(
+                []() {
+                    return std::make_shared<DialogueComponent>();
+                })
+        });
+
+        componentTypeInfos.emplace_back(ComponentTypeInfo{
+            ComponentType::FlowNode,
+            "flownode",
+            { ".json" },
+            std::function<std::shared_ptr<ComponentBase>(const nlohmann::json&)>(
+                [](const nlohmann::json& j) {
+                    return FlowNodeComponent::fromJson(j);
+                }),
+            std::function<std::shared_ptr<ComponentBase>()>(
+                []() {
+                    return std::make_shared<FlowNodeComponent>();
+                })
+        });
+
+        // Add more component types here as needed
     }
     
 }

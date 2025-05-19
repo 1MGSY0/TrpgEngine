@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <GLFW/glfw3.h>
 
+#include "UI/FlowPanel/Flowchart.hpp"
+
 #include "Engine/EntitySystem/Entity.hpp"
 #include "Engine/EntitySystem/EntityManager.hpp"
 
@@ -43,6 +45,7 @@ public:
 
 private:
     GLFWwindow* m_window;
+    Flowchart m_flowChart;
     Entity m_selectedEntity = INVALID_ENTITY;
     bool m_shouldBuildDockLayout = false;
     float m_statusTimer = 0.0f;
