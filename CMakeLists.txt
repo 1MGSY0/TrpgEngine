@@ -11,6 +11,28 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_library(glad STATIC packages/glad/src/glad.c)
 target_include_directories(glad PUBLIC packages/glad/include)
 
+# GLM (header-only)
+add_library(glm INTERFACE)
+target_include_directories(glm INTERFACE ${CMAKE_SOURCE_DIR}/packages/glm)
+
+# stb (header-only)
+add_library(stb INTERFACE)
+target_include_directories(stb INTERFACE ${CMAKE_SOURCE_DIR}/packages/stb)
+
+# Assimp
+find_library(ASSIMP_LIBRARY
+    NAMES assimp assimp-vc143-mt
+    PATHS ${CMAKE_SOURCE_DIR}/packages/assimp/lib
+    REQUIRED
+)
+
+add_library(assimp STATIC IMPORTED GLOBAL)
+set_target_properties(assimp PROPERTIES
+    IMPORTED_LOCATION ${ASSIMP_LIBRARY}
+    INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/packages/assimp/include
+)
+
+
 # ImGui
 file(GLOB IMGUI_SRC
     packages/imgui/*.cpp
@@ -47,7 +69,7 @@ include_directories(
 )
 
 # Make available to children
-set(THIRD_PARTY_LIBS glad imgui glfw3 opengl32)
+set(THIRD_PARTY_LIBS glad imgui glfw3 opengl32 glm stb assimp)
 
 # -------------------- SUBDIRECTORIES --------------------
 add_subdirectory(TRPGEngine)

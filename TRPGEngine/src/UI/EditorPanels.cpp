@@ -1,5 +1,9 @@
 #define NOMINMAX
+#include <glad/glad.h>
 #include "EditorUI.hpp"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #include <imgui.h>
 #include <vector>
@@ -18,8 +22,8 @@
 #include "UI/FlowPanel/Flowchart.hpp"
 #include "UI/ScenePanel/ScenePanel.hpp"
 #include "UI/EntityInspectorPanel.hpp"
-#include "../../../packages/stb/stb_image.h"
 
+GLuint loadTextureFromFile(const char* path);
 
 void EditorUI::renderFlowTabs() {
     static std::string saveStatus;
