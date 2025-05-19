@@ -1,4 +1,5 @@
 #include "EditorUI.hpp"
+#include "Application.hpp"
 
 #include "UI/AssetPanels/CharacterPanel.hpp"
 #include "UI/AssetPanels/ScriptPanel.hpp"
@@ -167,8 +168,8 @@ void EditorUI::renderMenuBar() {
 
         // ---------------- RUN MENU ----------------
         if (ImGui::BeginMenu("Run")) {
-            if (ImGui::MenuItem("Run Project")) {
-                // TODO: implement runtime logic
+            if (ImGui::MenuItem("Play", nullptr, m_app->isPlaying())) {
+                m_app->togglePlayMode();
             }
             ImGui::EndMenu();
         }

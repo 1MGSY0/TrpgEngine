@@ -39,9 +39,8 @@ EditorUI* EditorUI::get() {
     return s_instance;
 }
 
-EditorUI::EditorUI(GLFWwindow* window) : m_window(window) {
-    s_instance = this;
-}
+EditorUI::EditorUI(GLFWwindow* window, Application* appInstance)
+    : m_window(window), m_app(appInstance) {}
 
 EditorUI::~EditorUI() { shutdown(); }
 

@@ -11,6 +11,11 @@ public:
 
     void run();
 
+    bool isPlaying() const { return m_isPlaying; }
+    void togglePlayMode() { m_isPlaying = !m_isPlaying; }
+
+    Application* getThis() { return this; }
+
 private:
     bool initWindow();
     void shutdown();

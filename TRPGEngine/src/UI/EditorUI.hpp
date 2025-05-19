@@ -8,9 +8,11 @@
 #include "Engine/EntitySystem/Entity.hpp"
 #include "Engine/EntitySystem/EntityManager.hpp"
 
+class Application;
+
 class EditorUI {
 public:
-    EditorUI(GLFWwindow* window);
+    EditorUI(GLFWwindow* window, Application* appInstance);
     ~EditorUI();
 
     static EditorUI* get();
@@ -46,6 +48,8 @@ public:
 private:
     GLFWwindow* m_window;
     Flowchart m_flowChart;
+
+    Application* m_app = nullptr;
     Entity m_selectedEntity = INVALID_ENTITY;
     bool m_shouldBuildDockLayout = false;
     float m_statusTimer = 0.0f;

@@ -81,7 +81,8 @@ void Application::run() {
     if (!initWindow())
         return;
 
-    m_editorUI = std::make_unique<EditorUI>(m_window);
+    m_editorUI = std::make_unique<EditorUI>(m_window, this);
+
     m_editorUI->init();
 
     initEngine();
