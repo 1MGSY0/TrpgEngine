@@ -18,6 +18,8 @@ enum class ComponentType {
     Dialogue,
     FlowNode,
     Transform,
+    Choice,
+    DiceRoll,
     // Add more as needed
 };
 

@@ -9,19 +9,21 @@
 #include "Project/ProjectManager.hpp"
 #include "Project/BuildSystem.hpp"
 #include "ImGUIUtils/ImGuiUtils.hpp"
+#include "Templates/EntityTemplates.hpp"
+
 #include <imgui.h>
-#include <filesystem>
+#include <imgui_internal.h>
 #include <json.hpp>
+#include <filesystem>
+#include <cstring>
 
 using json = nlohmann::json;
-static bool showRenamePopup = false;
-static char newName[128] = "";
 
 void EditorUI::renderMenuBar() {
     if (ImGui::BeginMenuBar()) {
-        // --- FILE MENU ---
-        if (ImGui::BeginMenu("File")) {
 
+        // ---------------- FILE MENU ----------------
+        if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New Project")) {
                 if (ResourceManager::get().hasUnsavedChanges()) {
                     ImGui::OpenPopup("Unsaved Changes");
@@ -76,13 +78,13 @@ void EditorUI::renderMenuBar() {
                             std::string path = openFileDialog(filter.c_str());
                             if (!path.empty()) {
                                 ResourceManager::get().importFileAsset(path, asset.type);
-                                EditorUI::get()->forceFolderRefresh();
+                                forceFolderRefresh();
                             }
                         }
                     }
-                    ImGui::EndMenu();
+                    ImGui::EndMenu(); // Assets
                 }
-                ImGui::EndMenu();
+                ImGui::EndMenu(); // Import
             }
 
             if (ImGui::BeginMenu("Export")) {
@@ -94,120 +96,101 @@ void EditorUI::renderMenuBar() {
                         std::string out = openFileDialog();
                         if (!out.empty()) {
                             bool success = BuildSystem::buildProject(path, out);
-                            m_saveStatus = success ? "Build successful." : "Build failed.";
+                            setStatusMessage(success ? "Build successful." : "Build failed.");
                         }
                     }
                 }
-                ImGui::EndMenu();
+                ImGui::EndMenu(); // Export
             }
 
-            ImGui::EndMenu();
+            ImGui::EndMenu(); // File
         }
 
-        // --- EDIT MENU ---
+        // ---------------- EDIT MENU ----------------
         if (ImGui::BeginMenu("Edit")) {
             if (ImGui::MenuItem("Rename Selected File")) {
                 showRenamePopup = true;
-                std::string currentName = m_selectedAssetName;
-                strcpy(newName, currentName.c_str());
+                strcpy(newName, m_selectedAssetName.c_str());
                 ImGui::OpenPopup("RenameAssetPopup");
             }
-
-            // --- ENTITY MENU ---
-            if (ImGui::BeginMenu("Entities")) {
-
-                if (ImGui::MenuItem("New Entity")) {
-                    Entity e = EntityManager::get().createEntity();
-                    setSelectedEntity(e);
-                }
-
-                if (ImGui::BeginMenu("Add Component to Selected")) {
-                    Entity selected = getSelectedEntity();
-                    if (selected != INVALID_ENTITY) {
-                        for (const auto& info : ComponentTypeRegistry::getAllInfos()) {
-                            if (ImGui::MenuItem(info.key.c_str())) {
-                                auto comp = info.factory();
-                                EntityManager::get().addComponent(selected, comp);
-                            }
-                        }
-                    } else {
-                        ImGui::TextDisabled("No entity selected");
-                    }
-                    ImGui::EndMenu();
-                }
-
-                if (ImGui::MenuItem("Save Selected Entity as .entity")) {
-                    Entity selected = getSelectedEntity();
-                    if (selected != INVALID_ENTITY) {
-                        json j = EntityManager::get().serializeEntity(selected);
-                        ResourceManager::get().saveAssetFile(j, "entity_" + std::to_string(selected), ".entity");
-                    }
-                }
-
-                ImGui::EndMenu();
-            }
-
             ImGui::EndMenu();
         }
 
-        // --- POPUP WINDOW ---
-        if (showRenamePopup) {
-            ImGui::OpenPopup("RenameAssetPopup");
-            showRenamePopup = false;
-        }
+        // ---------------- ENTITY MENU ----------------
+        if (ImGui::BeginMenu("Entities")) {
+            if (ImGui::MenuItem("New Entity...")) {
+                ImGui::OpenPopup("NewEntityPopup");
+            }
 
-        if (ImGui::BeginPopupModal("RenameAssetPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::InputText("New Name", newName, IM_ARRAYSIZE(newName));
-
-            if (ImGui::Button("Rename")) {
-                if (strlen(newName) > 0) {
-                    auto* editor = EditorUI::get();
-                    if (editor) {
-                        std::filesystem::path folder = editor->getSelectedFolder();
-                        std::filesystem::path oldPath = folder / m_selectedAssetName;
-                        std::string newNameStr = newName;
-
-                        if (ResourceManager::get().renameAssetFile(oldPath.string(), newNameStr)) {
-                            m_selectedAssetName = newNameStr;
+            if (ImGui::BeginMenu("Add Component to Selected")) {
+                Entity selected = getSelectedEntity();
+                if (selected != INVALID_ENTITY) {
+                    for (const auto& info : ComponentTypeRegistry::getAllInfos()) {
+                        if (ImGui::MenuItem(info.key.c_str())) {
+                            EntityManager::get().addComponent(selected, info.factory());
+                            setStatusMessage("Added component: " + info.key);
                         }
                     }
-        
-                    strcpy(newName, "");
-                    ImGui::CloseCurrentPopup();
+                } else {
+                    ImGui::TextDisabled("No entity selected");
+                }
+                ImGui::EndMenu(); // Add Component
+            }
+
+            if (ImGui::MenuItem("Save Selected Entity as .entity")) {
+                Entity selected = getSelectedEntity();
+                if (selected != INVALID_ENTITY) {
+                    json j = EntityManager::get().serializeEntity(selected);
+                    ResourceManager::get().saveAssetFile(j, "entity_" + std::to_string(selected), ".entity");
+                    setStatusMessage("Saved selected entity.");
                 }
             }
 
-            ImGui::SameLine();
-            if (ImGui::Button("Cancel")) {
-                ImGui::CloseCurrentPopup();
-            }
-
-            ImGui::EndPopup();
+            ImGui::EndMenu(); // Entities
         }
 
+        // ---------------- SELECT MENU ----------------
         if (ImGui::BeginMenu("Select")) {
             if (ImGui::MenuItem("Select All")) {
-                // Undo logic here
+                // TODO: implement selection
             }
             ImGui::EndMenu();
         }
 
-
+        // ---------------- VIEW MENU ----------------
         if (ImGui::BeginMenu("View")) {
             if (ImGui::MenuItem("Appearance")) {
-                // Theme toggle or scaling coming soon
+                // TODO: implement theme toggle
             }
             ImGui::EndMenu();
         }
 
+        // ---------------- RUN MENU ----------------
         if (ImGui::BeginMenu("Run")) {
             if (ImGui::MenuItem("Run Project")) {
+                // TODO: implement runtime logic
             }
             ImGui::EndMenu();
         }
 
         ImGui::EndMenuBar();
     }
+
+    // ---------------- POPUPS ----------------
+    if (showRenamePopup) {
+        ImGui::OpenPopup("RenameAssetPopup");
+        showRenamePopup = false; // Reset immediately after opening
+    }
+
+    // Same for new entity popup
+    if (showNewEntityPopup) {
+        ImGui::OpenPopup("NewEntityPopup");
+        showNewEntityPopup = false;
+    }
+
+    // Now call render logic
+    renderRenamePopup();
+    renderNewEntityPopup();
 }
 
 void EditorUI::showUnsavedChangesPopup() {
@@ -252,4 +235,87 @@ void EditorUI::showUnsavedChangesPopup() {
         ImGui::EndPopup();
     }
 
+}
+
+
+void EditorUI::renderRenamePopup() {
+    if (ImGui::BeginPopupModal("RenameAssetPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("Rename Asset");
+        ImGui::Separator();
+
+        ImGui::InputText("New Name", newName, IM_ARRAYSIZE(newName));
+
+        if (ImGui::Button("Rename")) {
+            if (strlen(newName) > 0) {
+                auto* editor = EditorUI::get();
+                if (editor) {
+                    std::filesystem::path folder = editor->getSelectedFolder();
+                    std::filesystem::path oldPath = folder / m_selectedAssetName;
+                    std::string newNameStr = newName;
+
+                    if (ResourceManager::get().renameAssetFile(oldPath.string(), newNameStr)) {
+                        m_selectedAssetName = newNameStr;
+                        setStatusMessage("Asset renamed to " + newNameStr);
+                    } else {
+                        setStatusMessage("Rename failed.");
+                    }
+                }
+
+                strcpy(newName, "");
+                ImGui::CloseCurrentPopup();
+            }
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+}
+
+void EditorUI::renderNewEntityPopup() {
+    static int selectedTemplate = 0;
+    static char nameBuffer[128] = "";
+
+    if (ImGui::BeginPopupModal("NewEntityPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        const auto& templates = getEntityTemplates();
+
+        ImGui::Text("Choose Entity Type:");
+        ImGui::Separator();
+        for (int i = 0; i < templates.size(); ++i) {
+            if (ImGui::Selectable(templates[i].name.c_str(), selectedTemplate == i)) {
+                selectedTemplate = i;
+            }
+        }
+
+        ImGui::InputText("File Name", nameBuffer, IM_ARRAYSIZE(nameBuffer));
+
+        ImGui::Separator();
+        if (ImGui::Button("Create & Save")) {
+            Entity e = EntityManager::get().createEntity();
+            for (const auto& comp : templates[selectedTemplate].components)
+                EntityManager::get().addComponent(e, comp);
+
+            setSelectedEntity(e);
+
+            // Save to disk
+            json j = EntityManager::get().serializeEntity(e);
+            std::string fileName = std::string(nameBuffer) + ".entity";
+            ResourceManager::get().saveAssetFile(j, nameBuffer, ".entity");
+
+            EditorUI::get()->setStatusMessage("Created and saved: " + std::string(nameBuffer));
+            ImGui::CloseCurrentPopup();
+            nameBuffer[0] = '\0'; // reset
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+            nameBuffer[0] = '\0';
+        }
+
+        ImGui::EndPopup();
+    }
 }

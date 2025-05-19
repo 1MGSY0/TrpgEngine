@@ -59,6 +59,16 @@ private:
 
     void renderFolderTree(const std::filesystem::path& path, const std::filesystem::path& base);
     void renderFolderPreview(const std::filesystem::path& folder);
+    void renderRenamePopup();
+    void renderNewEntityPopup();
+
+    // UI state
+    bool showRenamePopup = false;
+    bool showNewEntityPopup = false;
+
+    char newName[128] = "";
+    char nameBuffer[128] = "";
+    int selectedTemplate = 0;
 
     bool m_showUnsavedPrompt = false;
     bool m_actionAfterPrompt = false;

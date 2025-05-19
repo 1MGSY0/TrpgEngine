@@ -1,29 +1,30 @@
 #pragma once
 #include "Engine/EntitySystem/ComponentBase.hpp"
 #include "Engine/EntitySystem/ComponentType.hpp"
-#include <imgui.h>  // For ImVec2
+#include <imgui.h>  
+#include <glm/vec3.hpp>
 
 class TransformComponent : public ComponentBase {
 public:
-    ImVec2 position = ImVec2(0, 0);
-    ImVec2 size = ImVec2(100, 100);  // default size
+    glm::vec3 position   = {0,0,0};
+    glm::vec3 rotation   = {0,0,0};
+    glm::vec3 scale      = {1,1,1};
 
-    std::string getID() const override { return "Transform"; }
     ComponentType getType() const override { return ComponentType::Transform; }
+    std::string getID()  const override { return "transform"; }
 
     nlohmann::json toJson() const override {
-        return {
-            {"position", { position.x, position.y }},
-            {"size",     { size.x, size.y }}
-        };
+      return {
+        {"pos",{position.x,position.y,position.z}},
+        {"rot",{rotation.x,rotation.y,rotation.z}},
+        {"scale",{scale.x,scale.y,scale.z}}
+      };
     }
-
     static std::shared_ptr<TransformComponent> fromJson(const nlohmann::json& j) {
-        auto comp = std::make_shared<TransformComponent>();
-        auto pos = j.value("position", std::vector<float>{0, 0});
-        auto sz  = j.value("size",     std::vector<float>{100, 100});
-        comp->position = ImVec2(pos[0], pos[1]);
-        comp->size     = ImVec2(sz[0],  sz[1]);
-        return comp;
+      auto c = std::make_shared<TransformComponent>();
+      auto p = j["pos"];
+      c->position = {p[0],p[1],p[2]};
+      /* ... similarly for rot/scale ... */
+      return c;
     }
 };
