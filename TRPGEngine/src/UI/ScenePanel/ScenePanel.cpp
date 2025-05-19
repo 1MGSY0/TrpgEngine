@@ -2,10 +2,16 @@
 #include "Engine/EntitySystem/EntityManager.hpp"
 #include "Engine/EntitySystem/Components/TransformComponent.hpp"
 #include <imgui_internal.h>
+#include <glad/glad.h>
+#include <iostream>
+#include "../../../../packages/stb/stb_image.h"
 
 ScenePanel::ScenePanel() {}
 
 ScenePanel::~ScenePanel() {}
+
+GLuint fbo = 0, fboTexture = 0, rbo = 0;
+int fbWidth = 800, fbHeight = 600;
 
 void ScenePanel::renderScenePanel() {
     m_panelSize = ImGui::GetContentRegionAvail();
@@ -25,6 +31,45 @@ void ScenePanel::renderScenePanel() {
     }
 
     handleDragDrop();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glViewport(0, 0, fbWidth, fbHeight);
+    glEnable(GL_DEPTH_TEST);
+
+    // Clear framebuffer
+    glClearColor(0.1f, 0.1f, 0.2f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // TODO: Draw your 3D object here
+    // yourShader.use();
+    // Set uniforms (MVP)
+    // yourModel.draw(yourShader);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void initSceneFrameBuffer(){
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    // Texture
+    glGenTextures(1, &fboTexture);
+    glBindTexture(GL_TEXTURE_2D, fboTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, fbWidth, fbHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
+
+    // Renderbuffer (depth/stencil)
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, fbWidth, fbHeight);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cerr << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void ScenePanel::renderEntity(Entity entity) {

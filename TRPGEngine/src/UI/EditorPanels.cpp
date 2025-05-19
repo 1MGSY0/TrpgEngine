@@ -18,6 +18,7 @@
 #include "UI/FlowPanel/Flowchart.hpp"
 #include "UI/ScenePanel/ScenePanel.hpp"
 #include "UI/EntityInspectorPanel.hpp"
+#include "../../../packages/stb/stb_image.h"
 
 
 void EditorUI::renderFlowTabs() {
@@ -68,7 +69,10 @@ void EditorUI::renderSceneTabs() {
     if (ImGui::BeginTabBar("SceneTabs")) {
         for (size_t i = 0; i < sceneTabs.size(); ++i) {
             if (ImGui::BeginTabItem(sceneTabs[i].c_str())) {
-                scenes[i].renderScenePanel();
+                ImGui::Text("3D View:");
+                ImVec2 imageSize = ImVec2(800, 600);
+                GLuint background = loadTextureFromFile("Runtime/sea_background.jpeg");
+                ImGui::Image((ImTextureID)(intptr_t)background, imageSize, ImVec2(0, 0), ImVec2(1, 1));
                 ImGui::EndTabItem();
             }
         }
@@ -83,7 +87,6 @@ void EditorUI::renderSceneTabs() {
 
     ImGui::End();
 }
-
 
 void EditorUI::renderInspectorTabs() {
     if (ImGui::Begin("Inspector")) {
@@ -176,7 +179,6 @@ void EditorUI::renderFolderTree(const std::filesystem::path& path, const std::fi
     }
 }
 
-
 void EditorUI::renderFolderPreview(const std::filesystem::path& folder) {
     if (!std::filesystem::exists(folder)) {
         ImGui::Text("Folder not found.");
@@ -237,3 +239,29 @@ void EditorUI::renderFolderPreview(const std::filesystem::path& folder) {
     }
 }
 
+GLuint loadTextureFromFile(const char* path) {
+    int width, height, channels;
+    unsigned char* data = stbi_load(path, &width, &height, &channels, 0);
+    if (!data) {
+        std::cerr << "Failed to load image: " << path << std::endl;
+        return 0;
+    }
+
+    GLenum format = (channels == 4) ? GL_RGBA : GL_RGB;
+
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    // Texture parameters (adjust as needed)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);  
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);  
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+
+    stbi_image_free(data);
+    return textureID;
+}
