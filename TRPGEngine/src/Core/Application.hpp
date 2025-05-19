@@ -21,4 +21,5 @@ private:
 
     GLFWwindow* m_window;
     std::unique_ptr<EditorUI> m_editorUI;
+    bool m_isPlaying = false;
 };

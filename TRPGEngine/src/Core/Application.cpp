@@ -18,6 +18,9 @@
 
 #include "UI/EditorUI.hpp"
 #include "UI/ImGUIUtils/ImGuiUtils.hpp"
+#include "Runtime/SceneRuntime.hpp"
+#include "Engine/Systems/LuaScriptSystem.hpp"
+#include "Engine/Systems/FlowTriggerSystem.hpp"
 
 // Use unique_ptr to manage EditorUI automatically
 Application::Application()
@@ -90,20 +93,18 @@ void Application::run() {
 
 void Application::mainLoop() {
     while (!glfwWindowShouldClose(m_window)) {
-        // --- Handle events
         glfwPollEvents();
-
-        // --- Begin ImGui Frame
         m_editorUI->handlePlatformEvents();
         m_editorUI->beginFrame();
 
-        // --- Game and Editor Update
-        update();
+        // Editor or Play mode:
+        if (m_isPlaying) {
+            LuaScriptSystem::get().runOnEvent("onUpdate", INVALID_ENTITY);
+            FlowTriggerSystem::get().renderAndUpdate();
+        } else {
+            m_editorUI->render();
+        }
 
-        // --- Rendering (game scene + UI)
-        render();
-
-        // --- Finalize Frame
         m_editorUI->endFrame();
     }
 }
@@ -123,11 +124,6 @@ void Application::update() {
 }
 
 void Application::render() {
-    // Game rendering logic
-    // e.g. GameSceneManager::get().render();
 
-    // UI rendering (editor overlay or in-game UI)
-    m_editorUI->render();
-    SceneRuntime::get().update();
 }
 

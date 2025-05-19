@@ -15,12 +15,14 @@ enum class ComponentType {
     Children,
     Character,
     Script,
+    Choice,
     Dialogue,
     FlowNode,
     Transform,
-    Choice,
+    UITrigger,
     DiceRoll,
-    // Add more as needed
+    Background,
+    GameState
 };
 
 struct ComponentTypeInfo {

@@ -1,14 +1,27 @@
 // FlowNodeComponent.hpp
 #pragma once
-#include "ComponentBase.hpp"
-#include "ComponentType.hpp"
-#include <nlohmann/json.hpp>
+#include "Engine/EntitySystem/ComponentBase.hpp"
+#include "Engine/EntitySystem/ComponentType.hpp"
+#include <string>
+#include <memory>
+#include <json.hpp>
+#include <vector>
+
+struct FlowOption {
+  std::string label;
+  int difficulty;
+  Entity nextOnSuccess, nextOnFailure;
+};
 
 class FlowNodeComponent : public ComponentBase {
 public:
   std::string name;
   ComponentType nextOnSuccess = ComponentType::Unknown;
   ComponentType nextOnFail    = ComponentType::Unknown;
+  bool isStart = false;
+  std::vector<Entity> dialogueEntities;
+  std::vector<FlowOption> options;
+  Entity nextNode;
 
   ComponentType getType() const override { return ComponentType::FlowNode; }
   std::string getID()  const override { return name; }

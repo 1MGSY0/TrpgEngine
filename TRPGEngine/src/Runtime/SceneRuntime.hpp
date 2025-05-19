@@ -1,4 +1,3 @@
-// SceneRuntime.hpp
 #pragma once
 
 #include "Engine/EntitySystem/EntityManager.hpp"

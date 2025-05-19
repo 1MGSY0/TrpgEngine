@@ -1,10 +1,9 @@
-// ChoiceComponent.hpp
 #pragma once
-#include "ComponentBase.hpp"
-#include "ComponentType.hpp"
-#include <nlohmann/json.hpp>
-#include <vector>
+#include "Engine/EntitySystem/ComponentBase.hpp"
+#include "Engine/EntitySystem/ComponentType.hpp"
 #include <string>
+#include <memory>
+#include <json.hpp>
 
 struct Choice {
   std::string text;

@@ -1,10 +1,11 @@
 #pragma once
-
 #include "Engine/EntitySystem/ComponentBase.hpp"
 #include "Engine/EntitySystem/ComponentType.hpp"
-#include <json.hpp>
 #include <string>
+#include <memory>
+#include <json.hpp>
 #include <unordered_map>
+#include <vector>
 
 class CharacterComponent : public ComponentBase {
 public:

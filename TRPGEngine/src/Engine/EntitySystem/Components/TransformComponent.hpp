@@ -1,8 +1,11 @@
 #pragma once
 #include "Engine/EntitySystem/ComponentBase.hpp"
 #include "Engine/EntitySystem/ComponentType.hpp"
+#include <string>
+#include <memory>
+#include <json.hpp>
 #include <imgui.h>  
-#include <glm/vec3.hpp>
+#include <include/ext/vector_float3.hpp>
 
 class TransformComponent : public ComponentBase {
 public:

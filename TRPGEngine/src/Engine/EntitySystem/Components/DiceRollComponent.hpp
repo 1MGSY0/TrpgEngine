@@ -1,24 +1,34 @@
-// DiceRollComponent.hpp
 #pragma once
-#include "ComponentBase.hpp"
-#include "ComponentType.hpp"
-#include <nlohmann/json.hpp>
+#include "Engine/EntitySystem/ComponentBase.hpp"
+#include "Engine/EntitySystem/ComponentType.hpp"
+#include <string>
+#include <memory>
+#include <json.hpp>
 
-class DiceRollComponent : public ComponentBase {
-public:
-  int sides = 6;
-  int result = 0;
+struct DiceRollComponent : public ComponentBase {
+    int sides = 20;          // D20 roll
+    int threshold = 10;      // Success if roll >= threshold
+    std::string onSuccess;   // FlowNode to trigger
+    std::string onFailure;
 
-  ComponentType getType() const override { return ComponentType::DiceRoll; }
-  std::string getID()  const override { return "dice"; }
+    std::string getID() const override { return "dice_roll"; }
+    ComponentType getType() const override { return ComponentType::DiceRoll; }
 
-  nlohmann::json toJson() const override {
-    return {{"sides", sides}, {"result", result}};
-  }
-  static std::shared_ptr<DiceRollComponent> fromJson(const nlohmann::json& j) {
-    auto c = std::make_shared<DiceRollComponent>();
-    c->sides = j.value("sides",6);
-    c->result = j.value("result",0);
-    return c;
-  }
+    nlohmann::json toJson() const override {
+        return {
+            { "sides", sides },
+            { "threshold", threshold },
+            { "onSuccess", onSuccess },
+            { "onFailure", onFailure }
+        };
+    }
+
+    static std::shared_ptr<DiceRollComponent> fromJson(const nlohmann::json& j) {
+        auto comp = std::make_shared<DiceRollComponent>();
+        comp->sides = j.value("sides", 20);
+        comp->threshold = j.value("threshold", 10);
+        comp->onSuccess = j.value("onSuccess", "");
+        comp->onFailure = j.value("onFailure", "");
+        return comp;
+    }
 };
