@@ -60,6 +60,19 @@ set_target_properties(glfw3 PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/packages/glfw/include
 )
 
+# Lua (precompiled)
+add_library(lua54 SHARED IMPORTED GLOBAL)
+
+set_target_properties(lua54 PROPERTIES
+    IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/packages/lua/lua54.dll"
+    IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}/packages/lua/lua54.lib"
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/packages/lua/include"
+)
+
+# sol2 (header-only)
+add_library(sol INTERFACE)
+target_include_directories(sol INTERFACE ${CMAKE_SOURCE_DIR}/packages/sol2/include)
+
 # Optional: Shared includes
 include_directories(
     ${CMAKE_SOURCE_DIR}/packages/glad/include
@@ -69,7 +82,7 @@ include_directories(
 )
 
 # Make available to children
-set(THIRD_PARTY_LIBS glad imgui glfw3 opengl32 glm stb assimp)
+set(THIRD_PARTY_LIBS glad imgui glfw3 opengl32 glm stb assimp lua54 sol)
 
 # -------------------- SUBDIRECTORIES --------------------
 add_subdirectory(TRPGEngine)
