@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Entity.hpp"
+#include "EntityTypes.hpp"
 #include "ComponentBase.hpp"
 #include "ComponentType.hpp"
 #include <unordered_map>
@@ -24,11 +24,17 @@ public:
     Entity deserializeEntity(const nlohmann::json& j);
     void loadEntitiesFromFolder(const std::string& folderPath);
 
-
     void clear();
+
+    // Templated getter
+    template<typename T>
+    std::shared_ptr<T> getComponent(Entity entity);
 
 private:
     EntityManager() = default;
     Entity m_nextId = 1;
     std::unordered_map<Entity, std::unordered_map<ComponentType, std::shared_ptr<ComponentBase>>> m_entities;
 };
+
+// Include template implementation
+#include "EntityManager.tpp"

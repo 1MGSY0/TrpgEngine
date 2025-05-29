@@ -1,7 +1,7 @@
 #include "RuntimeApp.h"
 
-int main(int argc, char** argv) {
+int main() {
     RuntimeApp app;
-    app.run("data.json");  // Could also read from argv[1]
+    app.run("Runtime/Assets");
     return 0;
 }

@@ -1,22 +1,4 @@
 #include "EditorUI.hpp"
-#include "Application.hpp"
-
-#include "UI/AssetPanels/CharacterPanel.hpp"
-#include "UI/AssetPanels/ScriptPanel.hpp"
-
-#include "Resources/ResourceManager.hpp"
-#include "Engine/EntitySystem/EntityManager.hpp"
-#include "Engine/EntitySystem/ComponentRegistry.hpp"
-#include "Project/ProjectManager.hpp"
-#include "Project/BuildSystem.hpp"
-#include "ImGUIUtils/ImGuiUtils.hpp"
-#include "Templates/EntityTemplates.hpp"
-
-#include <imgui.h>
-#include <imgui_internal.h>
-#include <json.hpp>
-#include <filesystem>
-#include <cstring>
 
 using json = nlohmann::json;
 
@@ -24,7 +6,7 @@ void EditorUI::renderMenuBar() {
     if (ImGui::BeginMenuBar()) {
 
         // ---------------- FILE MENU ----------------
-        if (ImGui::BeginMenu("File")) {
+        if (ImGui::BeginMenu("Project")) {
             if (ImGui::MenuItem("New Project")) {
                 if (ResourceManager::get().hasUnsavedChanges()) {
                     ImGui::OpenPopup("Unsaved Changes");
@@ -69,6 +51,11 @@ void EditorUI::renderMenuBar() {
                     ProjectManager::setCurrentProjectPath(path);
                     ResourceManager::get().setUnsavedChanges(false);
                 }
+            }
+
+            if (ImGui::MenuItem("Scene Metadata Settings...")) {
+                showProjectMetaPopup = true;
+                ImGui::OpenPopup("ProjectMetaPopup");
             }
 
             if (ImGui::BeginMenu("Import")) {
@@ -126,9 +113,10 @@ void EditorUI::renderMenuBar() {
             if (ImGui::BeginMenu("Add Component to Selected")) {
                 Entity selected = getSelectedEntity();
                 if (selected != INVALID_ENTITY) {
-                    for (const auto& info : ComponentTypeRegistry::getAllInfos()) {
+                    for (const auto& [type, info] : ComponentTypeRegistry::getAllInfos()) {
                         if (ImGui::MenuItem(info.key.c_str())) {
-                            EntityManager::get().addComponent(selected, info.factory());
+                            auto component = info.loader(nlohmann::json{}); 
+                            EntityManager::get().addComponent(selected, component);
                             setStatusMessage("Added component: " + info.key);
                         }
                     }
@@ -178,6 +166,8 @@ void EditorUI::renderMenuBar() {
     }
 
     // ---------------- POPUPS ----------------
+
+
     if (showRenamePopup) {
         ImGui::OpenPopup("RenameAssetPopup");
         showRenamePopup = false; // Reset immediately after opening
@@ -189,9 +179,96 @@ void EditorUI::renderMenuBar() {
         showNewEntityPopup = false;
     }
 
+    if (showProjectMetaPopup) {
+        ImGui::OpenPopup("ProjectMetaPopup");
+        showProjectMetaPopup = false;
+    }
+
     // Now call render logic
     renderRenamePopup();
     renderNewEntityPopup();
+    renderProjectMetaPopup(EngineManager::get().getProjectMetaEntity());
+}
+
+void EditorUI::renderProjectMetaPopup(Entity metaEntity) {
+
+    if (ImGui::BeginPopupModal("ProjectMetaPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        auto& em = EntityManager::get();
+        auto base = em.getComponent(metaEntity, ComponentType::ProjectMetadata); // still using SceneMetadata enum
+        if (!base) {
+            ImGui::Text("Project Metadata component missing.");
+            return;
+        }
+
+        auto meta = std::static_pointer_cast<ProjectMetaComponent>(base);
+
+        ImGui::Text("Project Metadata");
+        ImGui::Separator();
+
+        // Project Name
+        char nameBuffer[128];
+        strncpy(nameBuffer, meta->projectName.c_str(), sizeof(nameBuffer));
+        nameBuffer[127] = '\0';
+        if (ImGui::InputText("Project Name", nameBuffer, sizeof(nameBuffer))) {
+            meta->projectName = nameBuffer;
+        }
+
+        // Author
+        char authorBuffer[128];
+        strncpy(authorBuffer, meta->author.c_str(), sizeof(authorBuffer));
+        authorBuffer[127] = '\0';
+        if (ImGui::InputText("Author", authorBuffer, sizeof(authorBuffer))) {
+            meta->author = authorBuffer;
+        }
+
+        // Version
+        char versionBuffer[64];
+        strncpy(versionBuffer, meta->version.c_str(), sizeof(versionBuffer));
+        versionBuffer[63] = '\0';
+        if (ImGui::InputText("Version", versionBuffer, sizeof(versionBuffer))) {
+            meta->version = versionBuffer;
+        }
+
+        ImGui::Checkbox("Project Active", &meta->isActive);
+        ImGui::Separator();
+
+        ImGui::Text("🎬 Scenes in Project (FlowNodes)");
+        ImGui::TextDisabled("(Each scene is a FlowNode entity)");
+        ImGui::Separator();
+
+        Entity currentStart = meta->startNode;
+
+        for (size_t i = 0; i < meta->sceneNodes.size(); ++i) {
+            Entity nodeId = meta->sceneNodes[i];
+            auto flowComp = em.getComponent(nodeId, ComponentType::FlowNode);
+
+            if (!flowComp) {
+                ImGui::BulletText("Scene %zu: [Missing FlowNode] (ID: %u)", i, nodeId);
+                continue;
+            }
+
+            auto flow = std::static_pointer_cast<FlowNodeComponent>(flowComp);
+            bool isStart = (nodeId == currentStart);
+
+            ImGui::Text("Scene %zu: %s (ID: %u)%s", i, flow->name.c_str(), nodeId, isStart ? " [Start Scene]" : "");
+
+            if (!isStart && ImGui::Button(("Set as Start##" + std::to_string(i)).c_str())) {
+                meta->startNode = nodeId;
+            }
+
+            ImGui::Separator();
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::TextDisabled("Note: Project = ProjectMetaComponent. Scenes = FlowNodes.");
+
+        if (ImGui::Button("Close")) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
 }
 
 void EditorUI::showUnsavedChangesPopup() {

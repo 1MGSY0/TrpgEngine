@@ -6,18 +6,19 @@
 #include <json.hpp>
 
 struct BackgroundComponent : public ComponentBase {
-    std::string texturePath;
+    std::string assetPath;
 
     std::string getID() const override { return "background"; }
     ComponentType getType() const override { return ComponentType::Background; }
+    static ComponentType getStaticType() { return ComponentType::Background; }
 
     nlohmann::json toJson() const override {
-        return { { "texturePath", texturePath } };
+        return { { "assetPath", assetPath } };
     }
 
     static std::shared_ptr<BackgroundComponent> fromJson(const nlohmann::json& j) {
         auto comp = std::make_shared<BackgroundComponent>();
-        comp->texturePath = j.value("texturePath", "");
+        comp->assetPath = j.value("assetPath", "");
         return comp;
     }
 };

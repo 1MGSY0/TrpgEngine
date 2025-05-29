@@ -1,5 +1,6 @@
 #include "EntityTemplates.hpp"
 #include "Engine/EntitySystem/Components/TransformComponent.hpp"
+#include "Engine/EntitySystem/Components/Transform2DComponent.hpp"
 #include "Engine/EntitySystem/Components/CharacterComponent.hpp"
 #include "Engine/EntitySystem/Components/DialogueComponent.hpp"
 #include "Engine/EntitySystem/Components/FlowNodeComponent.hpp"
@@ -9,43 +10,26 @@
 const std::vector<EntityTemplate>& getEntityTemplates() {
   static std::vector<EntityTemplate> templates = {
     {
-      "Start Node",
+      "Flow Node",
       {
-        std::make_shared<TransformComponent>(),
+        std::make_shared<Transform2DComponent>(),
         std::make_shared<FlowNodeComponent>()
       }
     },
     {
-      "Dialogue Node",
+      "Dialogue",
       {
-        std::make_shared<TransformComponent>(),
-        std::make_shared<FlowNodeComponent>(),
+        std::make_shared<Transform2DComponent>(),
         std::make_shared<DialogueComponent>()
       }
     },
     {
-      "Choice Node",
+      "Character",
       {
-        std::make_shared<TransformComponent>(),
-        std::make_shared<FlowNodeComponent>(),
-        std::make_shared<ChoiceComponent>()
+          std::make_shared<Transform2DComponent>(),
+          std::make_shared<CharacterComponent>()
       }
     },
-    {
-      "Dice Roll Node",
-      {
-        std::make_shared<TransformComponent>(),
-        std::make_shared<FlowNodeComponent>(),
-        std::make_shared<DiceRollComponent>()
-      }
-    },
-    {
-      "End Node",
-      {
-        std::make_shared<TransformComponent>(),
-        std::make_shared<FlowNodeComponent>()
-      }
-    }
   };
   return templates;
 }

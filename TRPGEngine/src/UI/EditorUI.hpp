@@ -1,12 +1,35 @@
 #pragma once
 #include <string>
 #include <filesystem>
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <json.hpp>
+#include <cstring>
 #include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h> 
 
+#include "Core/Application.hpp"
+#include "Core/EngineManager.hpp"
+
+#include "UI/ScenePanel/ScenePanel.hpp"
 #include "UI/FlowPanel/Flowchart.hpp"
 
 #include "Engine/EntitySystem/Entity.hpp"
 #include "Engine/EntitySystem/EntityManager.hpp"
+#include "Engine/EntitySystem/ComponentRegistry.hpp"
+#include "Engine/EntitySystem/Components/ProjectMetaComponent.hpp"
+#include "Engine/EntitySystem/Components/FlowNodeComponent.hpp"
+
+#include "Engine/RenderSystem/SceneManager.hpp"
+
+#include "Resources/ResourceManager.hpp"
+
+#include "Project/ProjectManager.hpp"
+#include "Project/BuildSystem.hpp"
+
+#include "ImGUIUtils/ImGuiUtils.hpp"
+#include "Templates/EntityTemplates.hpp"
 
 class Application;
 
@@ -38,8 +61,6 @@ public:
     void setStatusMessage(const std::string& message);
 
     static void glfwFileDropCallback(GLFWwindow* window, int count, const char** paths);
-
-    void setSelectedFolder(const std::filesystem::path& folder);
     
     const std::filesystem::path& getSelectedFolder() const { return m_selectedFolder; }
     const std::string& getSelectedFileName() const { return m_selectedFileName; }
@@ -48,6 +69,7 @@ public:
 private:
     GLFWwindow* m_window;
     Flowchart m_flowChart;
+    ScenePanel scenePanel;
 
     Application* m_app = nullptr;
     Entity m_selectedEntity = INVALID_ENTITY;
@@ -65,10 +87,12 @@ private:
     void renderFolderPreview(const std::filesystem::path& folder);
     void renderRenamePopup();
     void renderNewEntityPopup();
+    void renderProjectMetaPopup(Entity metaEntity);
 
     // UI state
     bool showRenamePopup = false;
     bool showNewEntityPopup = false;
+    bool showProjectMetaPopup = false; 
 
     char newName[128] = "";
     char nameBuffer[128] = "";
@@ -79,6 +103,6 @@ private:
     bool m_forceRefresh = false;
     
 public:
-    void setSelectedEntity(Entity e) { m_selectedEntity = e; }
+    void setSelectedEntity(Entity e);
     Entity getSelectedEntity() const { return m_selectedEntity; }
 };

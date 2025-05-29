@@ -1,123 +1,119 @@
 #include "ComponentType.hpp"
 #include "ComponentBase.hpp"
-#include "Engine/EntitySystem/Components/CharacterComponent.hpp"
-#include "Engine/EntitySystem/Components/ScriptComponent.hpp"
-#include "Engine/EntitySystem/Components/SceneMetaComponent.hpp"
-#include "Engine/EntitySystem/Components/ParentComponent.hpp"
-#include "Engine/EntitySystem/Components/ChildrenComponent.hpp"
-#include "Engine/EntitySystem/Components/DialogueComponent.hpp"
-#include "Engine/EntitySystem/Components/FlowNodeComponent.hpp"
-#include "Engine/EntitySystem/Components/TransformComponent.hpp"
-#include "Engine/EntitySystem/Components/DiceRollComponent.hpp"
-#include "Engine/EntitySystem/Components/ChoiceComponent.hpp"
+
+#include "UI/ComponentPanel/RenderScriptPanel.hpp"
+#include "UI/ComponentPanel/RenderCharacterPanel.hpp"
+#include "UI/ComponentPanel/RenderDialoguePanel.hpp"
+#include "UI/ComponentPanel/RenderChoicePanel.hpp"
+#include "UI/ComponentPanel/RenderDicePanel.hpp"
+#include "UI/ComponentPanel/RenderBackgroundPanel.hpp"
+#include "UI/ComponentPanel/RenderFlowNodePanel.hpp"
+#include "UI/ComponentPanel/RenderUIButtonPanel.hpp"
+#include "UI/ComponentPanel/RenderTransform2DPanel.hpp"
+#include "UI/ComponentPanel/RenderTransform3DPanel.hpp"
 
 
-static std::vector<ComponentTypeInfo> componentTypeInfos;
+// UI renderers
+extern void renderCharacterInspector(const std::shared_ptr<CharacterComponent>&);
+extern void renderScriptInspector(const std::shared_ptr<ScriptComponent>&);
+extern void renderDialogueInspector(const std::shared_ptr<DialogueComponent>&);
+extern void renderChoiceInspector(const std::shared_ptr<ChoiceComponent>&);
+extern void renderDiceInspector(const std::shared_ptr<DiceRollComponent>&);
+extern void renderBackgroundInspector(const std::shared_ptr<BackgroundComponent>&);
+extern void renderFlowNodeInspector(const std::shared_ptr<FlowNodeComponent>&);
+extern void renderUIButtonInspector(const std::shared_ptr<UIButtonComponent>&);
+extern void renderTransform3DInspector(const std::shared_ptr<TransformComponent>&);
+extern void renderTransform2DInspector(const std::shared_ptr<Transform2DComponent>&);
+
 
 namespace ComponentTypeRegistry {
 
-    const ComponentTypeInfo* getInfo(ComponentType type) {
-        for (const auto& info : componentTypeInfos)
-            if (info.type == type)
-                return &info;
-        return nullptr;
-    }
+static std::unordered_map<ComponentType, RegisteredComponent> componentsByType;
+static std::unordered_map<std::string, ComponentType> stringToType;
 
-    const std::vector<ComponentTypeInfo>& getAllInfos() {
-        return componentTypeInfos;
-    }
+void registerBuiltins() {
+    componentsByType.clear();
+    stringToType.clear();
 
+    auto registerComponent = [](ComponentType type, const std::string& key, LoaderFn loader, InspectorRendererFn renderer = nullptr) {
+        componentsByType[type] = RegisteredComponent{ loader, key, renderer };
+        stringToType[key] = type;
+    };
 
-    std::string ComponentTypeRegistry::getDefaultExtension(ComponentType type) {
-        const auto* info = getInfo(type);
-        if (!info || info->extensions.empty()) return ".json"; 
-        return info->extensions.front(); 
-    }
+        registerComponent(ComponentType::ProjectMetadata, "project",
+            [](const nlohmann::json& j) { return ProjectMetaComponent::fromJson(j); }
+            // No inspector function provided
+        );
 
-
-    void registerBuiltins() {
-    componentTypeInfos.clear();
-
-    componentTypeInfos.emplace_back(ComponentTypeInfo{
-        ComponentType::SceneMetadata,
-        "scene",
-        { ".json" },
-        [](const nlohmann::json& j) { return SceneMetadataComponent::fromJson(j); },
-        []() { return std::make_shared<SceneMetadataComponent>(); }
-    });
-
-    componentTypeInfos.emplace_back(ComponentTypeInfo{
-        ComponentType::Parent,
-        "parent",
-        { ".json" },
-        [](const nlohmann::json& j) { return ParentComponent::fromJson(j); },
-        []() { return std::make_shared<ParentComponent>(); }
-    });
-
-    componentTypeInfos.emplace_back(ComponentTypeInfo{
-        ComponentType::Children,
-        "children",
-        { ".json" },
-        [](const nlohmann::json& j) { return ChildrenComponent::fromJson(j); },
-        []() { return std::make_shared<ChildrenComponent>(); }
-    });
-
-    componentTypeInfos.emplace_back(ComponentTypeInfo{
-        ComponentType::Character,
-        "character",
-        { ".json" },
+    registerComponent(ComponentType::Character, "character",
         [](const nlohmann::json& j) { return CharacterComponent::fromJson(j); },
-        []() { return std::make_shared<CharacterComponent>(); }
-    });
+        [](std::shared_ptr<ComponentBase> base) {
+            renderCharacterInspector(std::static_pointer_cast<CharacterComponent>(base));
+        });
 
-    componentTypeInfos.emplace_back(ComponentTypeInfo{
-        ComponentType::Script,
-        "script",
-        { ".lua", ".txt" },
+    registerComponent(ComponentType::Script, "script",
         [](const nlohmann::json& j) { return ScriptComponent::fromJson(j); },
-        []() { return std::make_shared<ScriptComponent>(); }
-    });
+        [](std::shared_ptr<ComponentBase> base) {
+            renderScriptInspector(std::static_pointer_cast<ScriptComponent>(base));
+        });
 
-    componentTypeInfos.emplace_back(ComponentTypeInfo{
-        ComponentType::Dialogue,
-        "dialogue",
-        { ".json" },
+    registerComponent(ComponentType::Dialogue, "dialogue",
         [](const nlohmann::json& j) { return DialogueComponent::fromJson(j); },
-        []() { return std::make_shared<DialogueComponent>(); }
-    });
+        [](std::shared_ptr<ComponentBase> base) {
+            renderDialogueInspector(std::static_pointer_cast<DialogueComponent>(base));
+        });
 
-    componentTypeInfos.emplace_back(ComponentTypeInfo{
-        ComponentType::FlowNode,
-        "flownode",
-        { ".json" },
+    registerComponent(ComponentType::FlowNode, "flownode",
         [](const nlohmann::json& j) { return FlowNodeComponent::fromJson(j); },
-        []() { return std::make_shared<FlowNodeComponent>(); }
-    });
+        [](std::shared_ptr<ComponentBase> base) {
+            renderFlowNodeInspector(std::static_pointer_cast<FlowNodeComponent>(base));
+        });
 
-    componentTypeInfos.emplace_back(ComponentTypeInfo{
-        ComponentType::Transform,
-        "transform",
-        { ".json" },
+    registerComponent(ComponentType::Transform, "transform",
         [](const nlohmann::json& j) { return TransformComponent::fromJson(j); },
-        []() { return std::make_shared<TransformComponent>(); }
-    });
+        [](std::shared_ptr<ComponentBase> base) {
+            renderTransform3DInspector(std::static_pointer_cast<TransformComponent>(base));
+        });
 
-    componentTypeInfos.emplace_back(ComponentTypeInfo{
-        ComponentType::Choice,
-        "choice",
-        { ".json" },
+    registerComponent(ComponentType::Transform2D, "transform2d",
+        [](const nlohmann::json& j) { return Transform2DComponent::fromJson(j); },
+        [](std::shared_ptr<ComponentBase> base) {
+            renderTransform2DInspector(std::static_pointer_cast<Transform2DComponent>(base));
+        });
+
+    registerComponent(ComponentType::Choice, "choice",
         [](const nlohmann::json& j) { return ChoiceComponent::fromJson(j); },
-        []() { return std::make_shared<ChoiceComponent>(); }
-    });
+        [](std::shared_ptr<ComponentBase> base) {
+            renderChoiceInspector(std::static_pointer_cast<ChoiceComponent>(base));
+        });
 
-    componentTypeInfos.emplace_back(ComponentTypeInfo{
-        ComponentType::DiceRoll,
-        "dice",
-        { ".json" },
+    registerComponent(ComponentType::DiceRoll, "dice",
         [](const nlohmann::json& j) { return DiceRollComponent::fromJson(j); },
-        []() { return std::make_shared<DiceRollComponent>(); }
-    });
+        [](std::shared_ptr<ComponentBase> base) {
+            renderDiceInspector(std::static_pointer_cast<DiceRollComponent>(base));
+        });
+
+    registerComponent(ComponentType::Background, "background",
+        [](const nlohmann::json& j) { return BackgroundComponent::fromJson(j); },
+        [](std::shared_ptr<ComponentBase> base) {
+            renderBackgroundInspector(std::static_pointer_cast<BackgroundComponent>(base));
+        });
+    registerComponent(
+        ComponentType::UIButton, "ui_button",
+        [](const nlohmann::json& j) { return UIButtonComponent::fromJson(j); },
+        [](std::shared_ptr<ComponentBase> base) {
+            renderUIButtonInspector(std::static_pointer_cast<UIButtonComponent>(base));
+        }
+    );
 }
 
-    
+const RegisteredComponent* getInfo(ComponentType type) {
+    auto it = componentsByType.find(type);
+    return it != componentsByType.end() ? &it->second : nullptr;
+}
+
+const std::unordered_map<ComponentType, RegisteredComponent>& getAllInfos() {
+    return componentsByType;
+}
+
 }

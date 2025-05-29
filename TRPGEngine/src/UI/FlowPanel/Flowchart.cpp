@@ -1,5 +1,8 @@
 #include "Flowchart.hpp"
-#include "UI/SceneManager.hpp"
+#include "Engine/RenderSystem/SceneManager.hpp"
+#include "core/EngineManager.hpp"
+#include "Engine/EntitySystem/Components/ProjectMetaComponent.hpp"
+#include "Engine/EntitySystem/Components/FlowNodeComponent.hpp"
 #include <imgui_internal.h>
 #include <cmath>
 
@@ -17,23 +20,33 @@ void Flowchart::render() {
     ImDrawList* drawList = ImGui::GetWindowDrawList();
     ImVec2 origin = ImGui::GetCursorScreenPos();
 
-    auto& scenes = SceneManager::getSceneNames();
     const float nodeWidth = 120.0f;
     const float nodeHeight = 40.0f;
     const float spacing = 150.0f;
 
-    static int cachedNextIndex = -1;
-    static std::string cachedPreviewSceneName;
-    static std::string lastHoveredNodeId;
+    auto& em = EntityManager::get();
+    Entity metaEntity = EngineManager::get().getProjectMetaEntity();
+    auto metaBase = em.getComponent(metaEntity, ComponentType::ProjectMetadata);
+    if (!metaBase) return;
 
-    for (size_t i = 0; i < scenes.size(); ++i) {
-        const std::string& name = scenes[i];
-        if (m_nodes.find(name) == m_nodes.end()) {
-            ImVec2 defaultPos = ImVec2(origin.x + 100.0f, origin.y + 100.0f + i * spacing);
-            addNode(name, name, defaultPos);
+    auto meta = std::static_pointer_cast<ProjectMetaComponent>(metaBase);
+
+    // Add all FlowNodes as visual nodes
+    for (size_t i = 0; i < meta->sceneNodes.size(); ++i) {
+        Entity nodeId = meta->sceneNodes[i];
+        auto flowComp = em.getComponent<FlowNodeComponent>(nodeId);
+        if (!flowComp) continue;
+
+        std::string label = flowComp->name;
+        std::string id = std::to_string(nodeId);
+
+        if (m_nodes.find(id) == m_nodes.end()) {
+            ImVec2 pos = ImVec2(origin.x + 100.0f, origin.y + i * spacing);
+            addNode(id, label, pos);
         }
     }
 
+    // Render visual node widgets
     for (auto& [id, node] : m_nodes) {
         ImGui::SetCursorScreenPos(node.position);
         ImGui::PushID(id.c_str());
@@ -42,55 +55,26 @@ void Flowchart::render() {
         drawList->AddRectFilled(node.position, rectMax, IM_COL32(80, 120, 255, 255), 4.0f);
         drawList->AddText(ImVec2(node.position.x + 10, node.position.y + 10), IM_COL32(255, 255, 255, 255), node.label.c_str());
 
-        ImGui::SetCursorScreenPos(node.position);
         ImGui::InvisibleButton("node_drag", ImVec2(nodeWidth, nodeHeight));
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
             node.position.x += ImGui::GetIO().MouseDelta.x;
             node.position.y += ImGui::GetIO().MouseDelta.y;
         }
 
-        // Position the + button
-        ImVec2 plusPos = ImVec2(node.position.x + 45, node.position.y + 50);
-        ImGui::SetCursorScreenPos(plusPos);
-
-        bool isPlusClicked = ImGui::Button("+##AddScene");
-        bool isPlusHovered = ImGui::IsItemHovered();
-
-        if (isPlusClicked) {
-            std::string newScene = "Scene " + std::to_string(SceneManager::getNextSceneIndex());
-            SceneManager::addScene(newScene);
-
-            // Position the new node below the current node
-            ImVec2 newPos = ImVec2(node.position.x, node.position.y + spacing);
-            addNode(newScene, newScene, newPos);
-
-            addConnection(id, newScene);
-        }
-
-        if (isPlusHovered) {
-            if (lastHoveredNodeId >= id) {
-                // Cache only on first hover for this node
-                cachedNextIndex = SceneManager::getNextSceneIndex();
-                cachedPreviewSceneName = "Scene " + std::to_string(cachedNextIndex);
-                lastHoveredNodeId = id;
-            }
-
-            // Draw preview node
-            ImVec2 previewPos = ImVec2(plusPos.x, plusPos.y + 60);
-            drawList->AddRectFilled(previewPos, ImVec2(previewPos.x + nodeWidth, previewPos.y + nodeHeight), IM_COL32(100, 200, 100, 255));
-            drawList->AddText(ImVec2(previewPos.x + 10, previewPos.y + 10), IM_COL32(255, 255, 255, 255), cachedPreviewSceneName.c_str());
-
-            ImVec2 startPoint = ImVec2(node.position.x + nodeWidth / 2, node.position.y + nodeHeight);
-            ImVec2 endPoint = ImVec2(previewPos.x + nodeWidth / 2, previewPos.y);
-            drawArrow(drawList, startPoint, endPoint);
-        } else if (lastHoveredNodeId == id) {
-            // Clear cache when no longer hovering this plus
-            cachedNextIndex = -1;
-            cachedPreviewSceneName.clear();
-            lastHoveredNodeId.clear();
-        }
-
         ImGui::PopID();
+    }
+
+    // Add connections based on nextNode in FlowNodeComponent
+    m_connections.clear();
+    for (Entity nodeId : meta->sceneNodes) {
+        auto flowComp = em.getComponent<FlowNodeComponent>(nodeId);
+        if (!flowComp || flowComp->nextNode == INVALID_ENTITY) continue;
+
+        std::string from = std::to_string(nodeId);
+        std::string to   = std::to_string(flowComp->nextNode);
+        if (m_nodes.count(from) && m_nodes.count(to)) {
+            addConnection(from, to);
+        }
     }
 
     renderConnections();

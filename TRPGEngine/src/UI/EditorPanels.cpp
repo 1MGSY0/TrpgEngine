@@ -14,13 +14,10 @@
 #include "UI/ImGuiUtils/ImGuiUtils.hpp"
 #include "Resources/ResourceManager.hpp"
 #include "Engine/EntitySystem/EntityManager.hpp"
-#include "Engine/EntitySystem/Components/CharacterComponent.hpp"
-#include "Engine/EntitySystem/Components/ScriptComponent.hpp"
 #include "Engine/EntitySystem/ComponentRegistry.hpp"
 
-#include "UI/SceneManager.hpp"
+#include "Engine/RenderSystem/SceneManager.hpp"
 #include "UI/FlowPanel/Flowchart.hpp"
-#include "UI/ScenePanel/ScenePanel.hpp"
 #include "UI/EntityInspectorPanel.hpp"
 
 GLuint loadTextureFromFile(const char* path);
@@ -65,29 +62,13 @@ void EditorUI::renderSceneTabs() {
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
                              ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
 
+    ImGui::SetNextWindowPos(panelPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(panelSize, ImGuiCond_Always);
+
     ImGui::Begin("Scene Panel", nullptr, flags);
 
-    auto& sceneTabs = SceneManager::getSceneNames();
-    auto& scenes = SceneManager::getScenePanels();
-
-    if (ImGui::BeginTabBar("SceneTabs")) {
-        for (size_t i = 0; i < sceneTabs.size(); ++i) {
-            if (ImGui::BeginTabItem(sceneTabs[i].c_str())) {
-                ImGui::Text("3D View:");
-                ImVec2 imageSize = ImVec2(800, 600);
-                GLuint background = loadTextureFromFile("Runtime/sea_background.jpeg");
-                ImGui::Image((ImTextureID)(intptr_t)background, imageSize, ImVec2(0, 0), ImVec2(1, 1));
-                ImGui::EndTabItem();
-            }
-        }
-
-        if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip)) {
-            std::string newScene = "Scene " + std::to_string(SceneManager::getNextSceneIndex());
-            SceneManager::addScene(newScene);
-        }
-
-        ImGui::EndTabBar();
-    }
+    //Call ScenePanel rendering
+    scenePanel.renderScenePanel();
 
     ImGui::End();
 }

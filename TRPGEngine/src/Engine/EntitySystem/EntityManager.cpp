@@ -72,9 +72,11 @@ nlohmann::json EntityManager::serializeEntity(Entity entity) const {
 Entity EntityManager::deserializeEntity(const nlohmann::json& j) {
     Entity entity = createEntity();
 
-    for (const auto& info : ComponentTypeRegistry::getAllInfos()) {
-        auto comp = info.loader(j[info.key]);
-        if (comp) addComponent(entity, comp);
+    for (const auto& [type, info] : ComponentTypeRegistry::getAllInfos()) {
+        if (j.contains(info.key)) {
+            auto comp = info.loader(j[info.key]);
+            if (comp) addComponent(entity, comp);
+        }
     }
 
     return entity;

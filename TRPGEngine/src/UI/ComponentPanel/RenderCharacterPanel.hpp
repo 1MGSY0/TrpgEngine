@@ -1,18 +1,9 @@
+#pragma once
 
-#include <imgui.h>
-#include <fstream>
-#include <memory>
-#include <cstring>
-#include <filesystem>
-#include <misc/cpp/imgui_stdlib.h> 
-
-#include "CharacterPanel.hpp"
+#include "UI/EditorUI.hpp"
 #include "Engine/EntitySystem/Components/CharacterComponent.hpp"
 
-#include "UI/ImGuiUtils/ImGuiUtils.hpp"
-#include "UI/EditorUI.hpp"
-
-void renderCharacterInspector(std::shared_ptr<CharacterComponent> character) {
+inline void renderCharacterInspector(const std::shared_ptr<CharacterComponent>& character) {
     if (!character) {
         ImGui::Text("No character selected.");
         return;
@@ -21,13 +12,34 @@ void renderCharacterInspector(std::shared_ptr<CharacterComponent> character) {
     // Editable name
     ImGui::InputText("Name", &character->name);
 
-    // Editable icon image path
+    // --- Icon Image with drag-drop ---
     ImGui::InputText("Icon Image", &character->iconImage);
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATH")) {
+            const char* path = static_cast<const char*>(payload->Data);
+            character->iconImage = path;
+        }
+        ImGui::EndDragDropTarget();
+    }
 
     // --- State Images ---
     if (ImGui::CollapsingHeader("State Images")) {
         for (auto& [state, path] : character->stateImages) {
-            ImGui::InputText(state.c_str(), &path);
+            ImGui::PushID(state.c_str());
+
+            ImGui::InputText("Path", &path);
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATH")) {
+                    const char* dropped = static_cast<const char*>(payload->Data);
+                    path = dropped;
+                }
+                ImGui::EndDragDropTarget();
+            }
+
+            ImGui::SameLine();
+            ImGui::TextDisabled("State: %s", state.c_str());
+
+            ImGui::PopID();
         }
 
         static std::string newState;
@@ -35,6 +47,14 @@ void renderCharacterInspector(std::shared_ptr<CharacterComponent> character) {
 
         ImGui::InputText("State", &newState);
         ImGui::InputText("Path", &newPath);
+
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATH")) {
+                const char* dropped = static_cast<const char*>(payload->Data);
+                newPath = dropped;
+            }
+            ImGui::EndDragDropTarget();
+        }
 
         if (ImGui::Button("Add State")) {
             if (!newState.empty() && !newPath.empty()) {

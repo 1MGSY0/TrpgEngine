@@ -10,21 +10,21 @@ public:
     ~Application();
 
     void run();
+    void shutdown();
 
-    bool isPlaying() const { return m_isPlaying; }
-    void togglePlayMode() { m_isPlaying = !m_isPlaying; }
-
-    Application* getThis() { return this; }
+    bool isPlaying() const { return m_playing; }
+    void togglePlayMode();
 
 private:
-    bool initWindow();
-    void shutdown();
-    void mainLoop();
     void initEngine();
-    void update();
+    bool initWindow();
+    void mainLoop();
+    void update(float deltaTime);
     void render();
 
-    GLFWwindow* m_window;
+    bool m_playing = false;
+    double m_lastFrameTime = 0.0;
+
+    GLFWwindow* m_window = nullptr;
     std::unique_ptr<EditorUI> m_editorUI;
-    bool m_isPlaying = false;
 };

@@ -28,8 +28,14 @@ target_link_libraries(TRPGEngine
     ${THIRD_PARTY_LIBS}
 )
 
-# --- Copy assets after build ---
+
+# --- Post-build steps ---
 add_custom_command(TARGET TRPGEngine POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:TRPGEngine>/assets
+            ${CMAKE_SOURCE_DIR}/assets
+            $<TARGET_FILE_DIR:TRPGEngine>/assets
+
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_SOURCE_DIR}/packages/lua/lua54.dll
+            $<TARGET_FILE_DIR:TRPGEngine>/lua54.dll
 )

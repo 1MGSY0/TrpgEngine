@@ -7,7 +7,7 @@
 
 struct Choice {
   std::string text;
-  ComponentType trigger; // e.g. FlowNode or some event type
+  ComponentType trigger; // FlowNode or some event type
 };
 
 class ChoiceComponent : public ComponentBase {
@@ -15,6 +15,7 @@ public:
   std::vector<Choice> options;
 
   ComponentType getType() const override { return ComponentType::Choice; }
+  static ComponentType getStaticType() { return ComponentType::Choice; }
   std::string getID()  const override { return "choice"; }
 
   nlohmann::json toJson() const override {

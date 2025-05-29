@@ -15,9 +15,8 @@ public:
     std::unordered_map<std::string, std::string> stateImages;
 
     std::string getID() const override { return name; }
-
     ComponentType getType() const override { return ComponentType::Character; }
-
+    static ComponentType getStaticType() { return ComponentType::Character; }
     nlohmann::json toJson() const override {
         return {
             {"name", name},

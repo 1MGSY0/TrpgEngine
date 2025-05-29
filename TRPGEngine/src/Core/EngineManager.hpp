@@ -1,15 +1,17 @@
 #pragma once
 #include <string>
+#include "Engine/EntitySystem/Entity.hpp"
+
+extern Entity m_projectMetaEntity;  // <- only declare here
 
 class EngineManager {
 public:
     static EngineManager& get();
 
-    // Initializes the engine runtime (if needed)
-    void initialize();
+    Entity getProjectMetaEntity() const { return m_projectMetaEntity; }
 
-    // Exports the final game (TRPG runtime + assets)
-    bool buildGame(const std::string& outputDirectory);
+    void initialize();  // Initializes the engine runtime
+    bool buildGame(const std::string& outputDirectory);  // Exports final game
 
 private:
     EngineManager() = default;

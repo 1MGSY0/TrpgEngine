@@ -26,4 +26,5 @@ public:
     ComponentType getType() const override {
         return ComponentType::Script;
     }
+    static ComponentType getStaticType() { return ComponentType::Script; }
 };

@@ -1,26 +1,22 @@
 #pragma once
 
-#include <memory>
-#include <vector>
-#include <string>
-#include <imgui.h> 
-#include <Engine/EntitySystem/Entity.hpp>
-#include <Engine/EntitySystem/Components/DialogueComponent.hpp>
-
+#include <imgui.h>
 
 class ScenePanel {
 public:
     ScenePanel();
     ~ScenePanel();
 
-    void renderScenePanel();                             // Call every frame
-    void renderTextOverlay(const DialogueComponent& text); // For dialogues and narration
-    void initSceneFrameBuffer();                        // Initialize framebuffer for scene rendering
+    // Main render entry
+    void renderScenePanel();
 
 private:
-    ImVec2 m_panelSize;                        // For layout reference
-    ImVec2 m_origin;                           // Top-left of scene window
+    void createFramebuffer(int width, int height);
+    void destroyFramebuffer();
 
-    void renderEntity(Entity entity);
-    void handleDragDrop();
+    unsigned int m_fbo = 0;
+    unsigned int m_colorTexture = 0;
+    unsigned int m_depthRbo = 0;
+
+    ImVec2 m_panelSize = ImVec2(0, 0);
 };

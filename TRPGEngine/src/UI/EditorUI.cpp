@@ -164,8 +164,13 @@ void EditorUI::glfwFileDropCallback(GLFWwindow* window, int count, const char** 
 }
 
 
-void EditorUI::setSelectedFolder(const std::filesystem::path& folder) {
-    m_selectedFolder = folder;
+
+void EditorUI::setSelectedEntity(Entity e) {
+    m_selectedEntity = e;
+
+    if (EntityManager::get().hasComponent(e, ComponentType::FlowNode)) {
+        SceneManager::get().setCurrentFlowNode(e);  // Only show current FlowNode
+    }
 }
 
 void EditorUI::forceFolderRefresh() {

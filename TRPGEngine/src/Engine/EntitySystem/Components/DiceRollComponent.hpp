@@ -13,7 +13,7 @@ struct DiceRollComponent : public ComponentBase {
 
     std::string getID() const override { return "dice_roll"; }
     ComponentType getType() const override { return ComponentType::DiceRoll; }
-
+    static ComponentType getStaticType() { return ComponentType::DiceRoll; }
     nlohmann::json toJson() const override {
         return {
             { "sides", sides },
