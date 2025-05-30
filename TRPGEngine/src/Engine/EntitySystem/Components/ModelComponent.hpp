@@ -15,6 +15,7 @@ struct Mesh {
 
 class ModelComponent : public ComponentBase {
 public:
+    std::string modelPath;
     std::vector<Mesh> meshes;
     bool isLoaded = false;
     bool isVisible = true;
@@ -25,6 +26,8 @@ public:
 
     nlohmann::json toJson() const override {
         return {
+            {"modelPath", modelPath },
+            {"meshes", nlohmann::json::array()},
             {"isLoaded", isLoaded},
             {"isVisible", isVisible}
         };
@@ -32,6 +35,7 @@ public:
 
     static std::shared_ptr<ModelComponent> fromJson(const nlohmann::json& j) {
         auto model = std::make_shared<ModelComponent>();
+        model->modelPath = j.value("modelPath", "");
         if (j.contains("meshes") && j["meshes"].is_array()) {
             for (const auto& meshJson : j["meshes"]) {
                 Mesh mesh;
