@@ -1,3 +1,4 @@
+// Transform3DComponent
 #pragma once
 #include "Engine/EntitySystem/ComponentBase.hpp"
 #include "Engine/EntitySystem/ComponentType.hpp"
@@ -5,7 +6,7 @@
 #include <memory>
 #include <json.hpp>
 #include <imgui.h>  
-#include <include/glm.hpp>
+#include <glm.hpp>
 
 class TransformComponent : public ComponentBase {
 public:
