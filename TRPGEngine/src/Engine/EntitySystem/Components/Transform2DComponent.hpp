@@ -1,6 +1,6 @@
 #pragma once
 #include "Engine/EntitySystem/ComponentBase.hpp"
-#include <include/glm.hpp>
+#include <glm.hpp>
 
 class Transform2DComponent : public ComponentBase {
 public:

@@ -16,6 +16,7 @@ enum class ComponentType {
     Choice,
     Dialogue,
     FlowNode,
+    Model,
     Transform,
     Transform2D,
     UIButton,

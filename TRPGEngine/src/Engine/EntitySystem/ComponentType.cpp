@@ -9,6 +9,7 @@
 #include "UI/ComponentPanel/RenderDicePanel.hpp"
 #include "UI/ComponentPanel/RenderBackgroundPanel.hpp"
 #include "UI/ComponentPanel/RenderFlowNodePanel.hpp"
+#include "UI/ComponentPanel/RenderModelPanel.hpp"
 #include "UI/ComponentPanel/RenderUIButtonPanel.hpp"
 #include "UI/ComponentPanel/RenderTransform2DPanel.hpp"
 #include "UI/ComponentPanel/RenderTransform3DPanel.hpp"
@@ -22,6 +23,7 @@ extern void renderChoiceInspector(const std::shared_ptr<ChoiceComponent>&);
 extern void renderDiceInspector(const std::shared_ptr<DiceRollComponent>&);
 extern void renderBackgroundInspector(const std::shared_ptr<BackgroundComponent>&);
 extern void renderFlowNodeInspector(const std::shared_ptr<FlowNodeComponent>&);
+extern void renderModelInspector(const std::shared_ptr<ModelComponent>&);
 extern void renderUIButtonInspector(const std::shared_ptr<UIButtonComponent>&);
 extern void renderTransform3DInspector(const std::shared_ptr<TransformComponent>&);
 extern void renderTransform2DInspector(const std::shared_ptr<Transform2DComponent>&);
@@ -68,6 +70,12 @@ void registerBuiltins() {
         [](const nlohmann::json& j) { return FlowNodeComponent::fromJson(j); },
         [](std::shared_ptr<ComponentBase> base) {
             renderFlowNodeInspector(std::static_pointer_cast<FlowNodeComponent>(base));
+        });
+
+    registerComponent(ComponentType::Model, "model",
+        [](const nlohmann::json& j) { return ModelComponent::fromJson(j); },
+        [](std::shared_ptr<ComponentBase> base) {
+            renderModelInspector(std::static_pointer_cast<ModelComponent>(base));
         });
 
     registerComponent(ComponentType::Transform, "transform",

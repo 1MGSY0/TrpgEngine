@@ -29,6 +29,7 @@ void RenderSystem::renderEntityEditor(Entity e) {
             IM_COL32(255, 255, 255, 128)
         );
     }
+
     if (auto bg = em.getComponent<BackgroundComponent>(e)) {
         // Draw background preview (placeholder)
         ImGui::Text("[Editor] Background: %s", bg->assetPath.c_str());
@@ -70,6 +71,7 @@ void RenderSystem::renderEntityRuntime(Entity e) {
 
         ImGui::EndChild();
     }
+
 
     if (auto btn = em.getComponent<UIButtonComponent>(e)) {
         if (auto t = em.getComponent<Transform2DComponent>(e)) {
