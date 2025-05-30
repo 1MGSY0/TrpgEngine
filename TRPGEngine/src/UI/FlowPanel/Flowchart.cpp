@@ -3,6 +3,7 @@
 #include "core/EngineManager.hpp"
 #include "Engine/EntitySystem/Components/ProjectMetaComponent.hpp"
 #include "Engine/EntitySystem/Components/FlowNodeComponent.hpp"
+#include "Engine/EntitySystem/EntityManager.tpp"
 #include <imgui_internal.h>
 #include <cmath>
 
@@ -26,10 +27,9 @@ void Flowchart::render() {
 
     auto& em = EntityManager::get();
     Entity metaEntity = EngineManager::get().getProjectMetaEntity();
-    auto metaBase = em.getComponent(metaEntity, ComponentType::ProjectMetadata);
-    if (!metaBase) return;
 
-    auto meta = std::static_pointer_cast<ProjectMetaComponent>(metaBase);
+    auto meta = em.getComponent<ProjectMetaComponent>(metaEntity);
+    if (!meta) return;
 
     // Add all FlowNodes as visual nodes
     for (size_t i = 0; i < meta->sceneNodes.size(); ++i) {

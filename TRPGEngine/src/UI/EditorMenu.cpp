@@ -232,7 +232,7 @@ void EditorUI::renderProjectMetaPopup(Entity metaEntity) {
         ImGui::Checkbox("Project Active", &meta->isActive);
         ImGui::Separator();
 
-        ImGui::Text("🎬 Scenes in Project (FlowNodes)");
+        ImGui::Text("Scenes in Project (FlowNodes)");
         ImGui::TextDisabled("(Each scene is a FlowNode entity)");
         ImGui::Separator();
 

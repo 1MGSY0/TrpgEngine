@@ -1,8 +1,7 @@
-// EntityManager.tpp
-#include "EntityManager.hpp"
-#include <memory>
+#pragma once
 
-// This tells the compiler you're defining a template function
+#include "EntityManager.hpp"
+
 template<typename T>
 std::shared_ptr<T> EntityManager::getComponent(Entity entity) {
     ComponentType type = T::getStaticType();
@@ -14,4 +13,17 @@ std::shared_ptr<T> EntityManager::getComponent(Entity entity) {
         }
     }
     return nullptr;
+}
+
+template <typename T, typename... Args>
+T& EntityManager::add(Entity e, Args&&... args) {
+    auto comp = std::make_shared<T>(std::forward<Args>(args)...);
+    addComponent(e, comp);
+    return *comp;
+}
+
+template <typename T>
+T* EntityManager::get(Entity e) {
+    auto comp = getComponent<T>(e);
+    return comp ? comp.get() : nullptr;
 }

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "UI/EditorUI.hpp"
+#include "Engine/EntitySystem/Entity.hpp"
+#include "Engine/EntitySystem/EntityManager.hpp"
 #include "Engine/EntitySystem/Components/FlowNodeComponent.hpp"
 #include "Engine/EntitySystem/Components/CharacterComponent.hpp"
 #include "Engine/EntitySystem/Components/BackgroundComponent.hpp"

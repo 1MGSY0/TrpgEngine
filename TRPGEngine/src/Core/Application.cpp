@@ -6,6 +6,7 @@
 #include <memory>
 #include <thread>
 #include <chrono>
+#include <filesystem> 
 
 #include <Windows.h>
 
@@ -107,6 +108,15 @@ void Application::run() {
         return;
     }
 
+    // Set working directory to the .exe directory
+    {
+        char exePath[MAX_PATH];
+        GetModuleFileNameA(nullptr, exePath, MAX_PATH);
+        std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();
+        std::filesystem::current_path(exeDir);
+        std::cout << "[WorkingDir] Set to: " << exeDir << "\n";
+    }
+
     std::cout << "[Application] Creating Editor UI\n";
     m_editorUI = std::make_unique<EditorUI>(m_window, this);
     m_editorUI->init();
@@ -119,15 +129,11 @@ void Application::run() {
 }
 
 void Application::initEngine() {
-    std::cout << "[EngineManager] Initializing...\n";
     EngineManager::get().initialize();
-    std::cout << "[EngineManager] Initialized.\n";
 }
 
 void Application::mainLoop() {
     std::cout << "[Application] Entering main loop\n";
-
-    const double targetFrameTime = 1.0 / 60.0;
 
     while (!glfwWindowShouldClose(m_window)) {
         double start = glfwGetTime();

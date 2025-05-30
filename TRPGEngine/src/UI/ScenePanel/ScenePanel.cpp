@@ -55,7 +55,9 @@ void ScenePanel::createFramebuffer(int width, int height) {
 }
 
 void ScenePanel::renderScenePanel() {
-    ImGui::Begin("Scene");
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+                             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
+    ImGui::Begin("Scene Panel", nullptr, flags);
 
     ImVec2 contentSize = ImGui::GetContentRegionAvail();
     if (contentSize.x > 0 && contentSize.y > 0 &&

@@ -20,19 +20,20 @@
  * @param em Reference to the active EntityManager.
  */
 
-inline void renderEntityInspector(Entity entity, EntityManager& em) {
+inline void renderEntityInspector(Entity entity) {
+    auto& em = EntityManager::get();
+
     if (entity == INVALID_ENTITY) {
         ImGui::Text("No entity selected.");
         return;
     }
 
-    // 1. ADD COMPONENT SECTION
+    // 1. Add Component Section
     if (ImGui::CollapsingHeader("Add Component", ImGuiTreeNodeFlags_DefaultOpen)) {
         static int selectedIndex = 0;
         static std::vector<std::string> keys;
         static std::vector<ComponentType> types;
 
-        // Build list once
         if (keys.empty()) {
             for (const auto& [type, info] : ComponentTypeRegistry::getAllInfos()) {
                 keys.push_back(info.key);
@@ -56,14 +57,14 @@ inline void renderEntityInspector(Entity entity, EntityManager& em) {
 
     ImGui::Separator();
 
-    // 2. DISPLAY EXISTING COMPONENTS
-    auto components = em.getAllComponents(entity);
+    // 2. Display Existing Components
+    const auto& components = em.getAllComponents(entity);
     if (components.empty()) {
         ImGui::Text("This entity has no components.");
         return;
     }
 
-    for (auto& comp : components) {
+    for (const auto& comp : components) {
         ComponentType type = comp->getType();
         const auto* info = ComponentTypeRegistry::getInfo(type);
         if (!info) continue;
@@ -73,7 +74,7 @@ inline void renderEntityInspector(Entity entity, EntityManager& em) {
             if (info->inspectorRenderer) {
                 info->inspectorRenderer(comp);
             } else {
-                ImGui::Text("No UI renderer for this component.");
+                ImGui::Text("No inspector defined for %s", info->key.c_str());
             }
         }
         ImGui::PopID();

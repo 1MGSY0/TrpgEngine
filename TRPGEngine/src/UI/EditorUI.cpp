@@ -45,12 +45,15 @@ EditorUI::EditorUI(GLFWwindow* window, Application* appInstance)
 EditorUI::~EditorUI() { shutdown(); }
 
 void EditorUI::shutdown() {
+    std::cout << "[EditorUI] Shutting down ImGui context...\n";
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+    std::cout << "[EditorUI] Shutdown complete.\n";
 }
 
 void EditorUI::init() {
+    std::cout << "[EditorUI] Initializing ImGui context...\n";
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
@@ -67,9 +70,10 @@ void EditorUI::init() {
     glfwSetDropCallback(m_window, EditorUI::glfwFileDropCallback);
 
     io.Fonts->Clear();
-    io.Fonts->AddFontFromFileTTF("assets/fonts/InterVariable.ttf", 16.0f);
+    io.Fonts->AddFontFromFileTTF("Assets/fonts/InterVariable.ttf", 16.0f);
     io.FontGlobalScale = 1.5f;
 
+    std::cout << "[EditorUI] ImGui initialized. Custom dark theme applied.\n";
     applyCustomDarkTheme();
 
 }
@@ -106,6 +110,7 @@ void EditorUI::render() {
     ImGui::PopStyleVar();
 
     if (m_shouldBuildDockLayout) {
+        std::cout << "[EditorUI] Building initial dock layout...\n";
         initDockLayout();\
         m_shouldBuildDockLayout = false;
     }
@@ -160,6 +165,7 @@ void EditorUI::glfwFileDropCallback(GLFWwindow* window, int count, const char** 
     for (int i = 0; i < count; ++i) {
         if (paths[i])
             s_pendingDroppedPaths.push_back(paths[i]);
+            std::cout << "[EditorUI] File dropped: " << paths[i] << "\n";
     }
 }
 
@@ -167,12 +173,14 @@ void EditorUI::glfwFileDropCallback(GLFWwindow* window, int count, const char** 
 
 void EditorUI::setSelectedEntity(Entity e) {
     m_selectedEntity = e;
-
+    std::cout << "[EditorUI] Selected entity ID: " << e << "\n";
     if (EntityManager::get().hasComponent(e, ComponentType::FlowNode)) {
         SceneManager::get().setCurrentFlowNode(e);  // Only show current FlowNode
+        std::cout << "[EditorUI] FlowNode component found. Set as current FlowNode.\n";
     }
 }
 
 void EditorUI::forceFolderRefresh() {
+    std::cout << "[EditorUI] Force-refreshing folder view...\n";
     m_forceRefresh = true; 
 }

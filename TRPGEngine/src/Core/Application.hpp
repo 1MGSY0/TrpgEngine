@@ -24,6 +24,7 @@ private:
 
     bool m_playing = false;
     double m_lastFrameTime = 0.0;
+    double targetFrameTime = 1.0 / 60.0;
 
     GLFWwindow* m_window = nullptr;
     std::unique_ptr<EditorUI> m_editorUI;

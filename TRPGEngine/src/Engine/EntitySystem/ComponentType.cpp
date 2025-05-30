@@ -1,5 +1,6 @@
 #include "ComponentType.hpp"
 #include "ComponentBase.hpp"
+#include "Engine/EntitySystem/EntityManager.tpp"
 
 #include "UI/ComponentPanel/RenderScriptPanel.hpp"
 #include "UI/ComponentPanel/RenderCharacterPanel.hpp"

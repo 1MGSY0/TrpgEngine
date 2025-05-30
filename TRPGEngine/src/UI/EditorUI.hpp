@@ -80,7 +80,7 @@ private:
     std::string m_saveStatus;
     std::string m_selectedFileName;
     std::string m_selectedAssetName;
-    std::filesystem::path m_assetsRoot = "Runtime";        // base folder
+    std::filesystem::path m_assetsRoot = std::filesystem::current_path() / "Runtime";        // base folder
     std::filesystem::path m_selectedFolder = m_assetsRoot; // Currently open folder
 
     void renderFolderTree(const std::filesystem::path& path, const std::filesystem::path& base);

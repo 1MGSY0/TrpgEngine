@@ -10,8 +10,16 @@ EntityManager& EntityManager::get() {
     return instance;
 }
 
+void EntityManager::clear() {
+    m_entities.clear();
+    m_metadata.clear();
+    m_nextId = 1;
+}
+
 Entity EntityManager::createEntity() {
-    return m_nextId++;
+    Entity id = m_nextId++;
+    m_metadata[id] = EntityMeta();  // Initialize metadata
+    return id;
 }
 
 void EntityManager::destroyEntity(Entity entity) {
@@ -54,9 +62,9 @@ std::vector<Entity> EntityManager::getAllEntities() const {
     return entities;
 }
 
-nlohmann::json EntityManager::serializeEntity(Entity entity) const {
+nlohmann::json EntityManager::serializeEntity(Entity e) const {
     nlohmann::json j;
-    auto it = m_entities.find(entity);
+    auto it = m_entities.find(e);
     if (it == m_entities.end()) return j;
 
     for (const auto& [type, comp] : it->second) {
@@ -65,6 +73,13 @@ nlohmann::json EntityManager::serializeEntity(Entity entity) const {
             j[info->key] = comp->toJson();
         }
     }
+
+    const auto& meta = m_metadata.at(e);
+    j["_meta"] = {
+        {"name", meta.name},
+        {"type", static_cast<int>(meta.type)},
+        {"parent", meta.parent}
+    };
 
     return j;
 }
@@ -76,6 +91,16 @@ Entity EntityManager::deserializeEntity(const nlohmann::json& j) {
         if (j.contains(info.key)) {
             auto comp = info.loader(j[info.key]);
             if (comp) addComponent(entity, comp);
+        }
+    }
+
+    if (j.contains("_meta")) {
+        const auto& jm = j["_meta"];
+        m_metadata[entity].name = jm.value("name", "Unnamed");
+        m_metadata[entity].type = static_cast<EntityType>(jm.value("type", 0));
+        m_metadata[entity].parent = jm.value("parent", INVALID_ENTITY);
+        if (m_metadata[entity].parent != INVALID_ENTITY) {
+            m_metadata[m_metadata[entity].parent].children.push_back(entity);
         }
     }
 
@@ -106,7 +131,26 @@ void EntityManager::loadEntitiesFromFolder(const std::string& folderPath) {
     }
 }
 
-void EntityManager::clear() {
-    m_entities.clear();
-    m_nextId = 1;
+void EntityManager::setEntityName(Entity e, const std::string& name) {
+    m_metadata[e].name = name;
 }
+
+void EntityManager::setEntityType(Entity e, EntityType type) {
+    m_metadata[e].type = type;
+}
+
+void EntityManager::setEntityParent(Entity child, Entity parent) {
+    m_metadata[child].parent = parent;
+    m_metadata[parent].children.push_back(child);
+}
+
+const EntityMeta* EntityManager::getMeta(Entity e) const {
+    auto it = m_metadata.find(e);
+    return it != m_metadata.end() ? &it->second : nullptr;
+}
+
+EntityMeta* EntityManager::getMeta(Entity e) {
+    auto it = m_metadata.find(e);
+    return it != m_metadata.end() ? &it->second : nullptr;
+}
+
