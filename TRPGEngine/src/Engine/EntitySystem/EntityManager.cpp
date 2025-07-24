@@ -16,9 +16,16 @@ void EntityManager::clear() {
     m_nextId = 1;
 }
 
-Entity EntityManager::createEntity() {
+Entity EntityManager::createEntity(Entity parent = INVALID_ENTITY) {
     Entity id = m_nextId++;
-    m_metadata[id] = EntityMeta();  // Initialize metadata
+    m_metadata[id] = EntityMeta();
+    m_entities[id] = {};
+
+    if (parent != INVALID_ENTITY) {
+        std::cerr << "[EntityManager] Parent entity " << parent << " does not exist.\n";
+        setEntityParent(id, parent);
+    }
+
     return id;
 }
 
@@ -64,48 +71,103 @@ std::vector<Entity> EntityManager::getAllEntities() const {
 
 nlohmann::json EntityManager::serializeEntity(Entity e) const {
     nlohmann::json j;
-    auto it = m_entities.find(e);
-    if (it == m_entities.end()) return j;
-
-    for (const auto& [type, comp] : it->second) {
-        const auto* info = ComponentTypeRegistry::getInfo(type);
-        if (info) {
-            j[info->key] = comp->toJson();
-        }
+    if (m_entities.find(e) == m_entities.end()) {
+        std::cerr << "[EntityManager] serializeEntity: entity " << e << " missing from m_entities\n";
+        return j; // or throw, or assert
     }
 
-    const auto& meta = m_metadata.at(e);
-    j["_meta"] = {
-        {"name", meta.name},
-        {"type", static_cast<int>(meta.type)},
-        {"parent", meta.parent}
-    };
+    // Save metadata
+    const auto* meta = getMeta(e);
+    if (meta) {
+        j["_meta"] = {
+            {"name", meta->name},
+            {"type", static_cast<int>(meta->type)},
+            {"parent", meta->parent},
+        };
+    }
+
+    // Save components using ComponentTypeRegistry
+    for (const auto& [type, comp] : m_entities.at(e)) {
+        const auto* reg = ComponentTypeRegistry::getInfo(type);
+        if (!reg) {
+            std::cerr << "[Serialization] Unknown registered component type: " << static_cast<int>(type) << "\n";
+            continue;
+        }
+
+        nlohmann::json compJson = comp->toJson();
+        compJson["type"] = reg->key;  // Add type string for deserialization
+        j["components"].push_back(compJson);
+    }
+
+    // Save children recursively
+    if (meta && !meta->children.empty()) {
+        for (Entity child : meta->children) {
+            j["children"].push_back(serializeEntity(child));
+        }
+    }
 
     return j;
 }
 
+
+
 Entity EntityManager::deserializeEntity(const nlohmann::json& j) {
-    Entity entity = createEntity();
+    Entity e = createEntity();
 
-    for (const auto& [type, info] : ComponentTypeRegistry::getAllInfos()) {
-        if (j.contains(info.key)) {
-            auto comp = info.loader(j[info.key]);
-            if (comp) addComponent(entity, comp);
-        }
-    }
-
+    // Load metadata
     if (j.contains("_meta")) {
-        const auto& jm = j["_meta"];
-        m_metadata[entity].name = jm.value("name", "Unnamed");
-        m_metadata[entity].type = static_cast<EntityType>(jm.value("type", 0));
-        m_metadata[entity].parent = jm.value("parent", INVALID_ENTITY);
-        if (m_metadata[entity].parent != INVALID_ENTITY) {
-            m_metadata[m_metadata[entity].parent].children.push_back(entity);
+        const auto& metaJ = j["_meta"];
+        setEntityMeta(
+            e,
+            metaJ.value("name", "Unnamed"),
+            static_cast<EntityType>(metaJ.value("type", 0))
+        );
+
+        Entity parent = metaJ.value("parent", INVALID_ENTITY);
+        if (parent != INVALID_ENTITY)
+            setEntityParent(e, parent);
+    }
+
+    // Load components
+    if (j.contains("components")) {
+        for (const auto& compJ : j["components"]) {
+            if (!compJ.contains("type")) {
+                std::cerr << "[Deserialization] Skipping component with no type field\n";
+                continue;
+            }
+
+            std::string typeStr = compJ["type"].get<std::string>();
+
+            ComponentType type;
+            try {
+                type = ComponentTypeRegistry::getTypeFromString(typeStr);
+            } catch (const std::exception& ex) {
+                std::cerr << "[Deserialization] " << ex.what() << "\n";
+                continue;
+            }
+
+            const auto* reg = ComponentTypeRegistry::getInfo(type);
+            if (!reg || !reg->loader) {
+                std::cerr << "[Deserialization] No loader registered for type: " << typeStr << "\n";
+                continue;
+            }
+
+            std::shared_ptr<ComponentBase> comp = reg->loader(compJ);
+            addComponent(e, comp);  // assuming this adds the component to entity `e`
         }
     }
 
-    return entity;
+    // Load children recursively
+    if (j.contains("children")) {
+        for (const auto& childJ : j["children"]) {
+            Entity child = deserializeEntity(childJ);
+            setEntityParent(child, e);
+        }
+    }
+
+    return e;
 }
+
 
 void EntityManager::loadEntitiesFromFolder(const std::string& folderPath) {
     namespace fs = std::filesystem;
@@ -130,6 +192,11 @@ void EntityManager::loadEntitiesFromFolder(const std::string& folderPath) {
         }
     }
 }
+
+void EntityManager::setEntityMeta(Entity e, const std::string& name, EntityType type) {
+    m_metadata[e] = EntityMeta{name, type};
+}
+
 
 void EntityManager::setEntityName(Entity e, const std::string& name) {
     m_metadata[e].name = name;

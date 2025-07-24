@@ -8,11 +8,14 @@ constexpr Entity INVALID_ENTITY = 0;
 
 enum class EntityType {
     Default,
+    ProjectMeta,
     FlowNode,
     Dialogue,
     Background,
     UIButton,
     Character,
+    Choice,
+    DiceRoll,
     Item,
     Folder,
 };

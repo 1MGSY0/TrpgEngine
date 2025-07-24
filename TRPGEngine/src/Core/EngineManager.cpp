@@ -3,6 +3,7 @@
 #include "Project/ProjectManager.hpp"
 #include "Engine/EntitySystem/EntityManager.hpp"
 #include "Engine/EntitySystem/Components/ProjectMetaComponent.hpp"
+#include "Project/ProjectManager.hpp"
 
 #include <iostream>
 
@@ -17,10 +18,23 @@ void EngineManager::initialize() {
     std::cout << "[EngineManager] Initializing...\n";
 
     // Initialize EntityManager & Project Meta
-    auto& em = EntityManager::get();
-    m_projectMetaEntity = em.createEntity();
-    em.addComponent(m_projectMetaEntity, std::make_shared<ProjectMetaComponent>());
 
+    if (ProjectManager::getCurrentProjectPath().empty()) {
+        std::cout << "[EngineManager] No project loaded. Creating temporary project...\n";
+
+        std::string defaultProjectName = "Untitled";
+        std::string defaultProjectPath = "Runtime/" + defaultProjectName + ".trpgproj";
+
+        // Ensure directory exists
+        std::filesystem::create_directories("Runtime");
+
+        if (!ProjectManager::CreateNewProject(defaultProjectName, defaultProjectPath)) {
+            std::cerr << "[EngineManager] Failed to create default project.\n";
+        } else {
+            ProjectManager::setCurrentProjectPath(defaultProjectPath);
+            std::cout << "[EngineManager] Default project created.\n";
+        }
+    }
     // Initialize other systems as needed
     // e.g. LuaScriptSystem::get().init();
     // FlowTriggerSystem::get().init();

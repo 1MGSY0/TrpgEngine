@@ -59,6 +59,8 @@ public:
     void forceFolderRefresh();
     void handlePlatformEvents(); 
     void setStatusMessage(const std::string& message);
+    void setSelectedEntity(Entity e);
+    Entity getSelectedEntity() const { return m_selectedEntity; }
 
     static void glfwFileDropCallback(GLFWwindow* window, int count, const char** paths);
     
@@ -102,7 +104,4 @@ private:
     bool m_actionAfterPrompt = false;
     bool m_forceRefresh = false;
     
-public:
-    void setSelectedEntity(Entity e);
-    Entity getSelectedEntity() const { return m_selectedEntity; }
 };

@@ -20,7 +20,7 @@ class EntityManager {
 public:
     static EntityManager& get();
 
-    Entity createEntity();
+    Entity createEntity(Entity parent = INVALID_ENTITY);
     void destroyEntity(Entity entity);
     void clear();
 
@@ -33,6 +33,7 @@ public:
     std::vector<Entity> getAllEntities() const;
 
     // Metadata
+    void setEntityMeta(Entity entity, const std::string& name, EntityType type);
     void setEntityName(Entity e, const std::string& name);
     void setEntityType(Entity e, EntityType type);
     void setEntityParent(Entity child, Entity parent);

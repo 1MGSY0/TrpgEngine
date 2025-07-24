@@ -1,4 +1,5 @@
 #include "EditorUI.hpp"
+#include <iostream>
 
 using json = nlohmann::json;
 
@@ -107,6 +108,7 @@ void EditorUI::renderMenuBar() {
         // ---------------- ENTITY MENU ----------------
         if (ImGui::BeginMenu("Entities")) {
             if (ImGui::MenuItem("New Entity...")) {
+                showNewEntityPopup = true;
                 ImGui::OpenPopup("NewEntityPopup");
             }
 
@@ -354,45 +356,88 @@ void EditorUI::renderRenamePopup() {
 }
 
 void EditorUI::renderNewEntityPopup() {
-    static int selectedTemplate = 0;
+    static int selectedTypeIndex = 0;
     static char nameBuffer[128] = "";
 
+    const auto typeNames = getEntityTypeNames();
+    const auto& templateMap = getEntityTemplateMap();
+
+    static bool shouldClosePopup = false;
+
     if (ImGui::BeginPopupModal("NewEntityPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        const auto& templates = getEntityTemplates();
+        shouldClosePopup = false;
 
         ImGui::Text("Choose Entity Type:");
         ImGui::Separator();
-        for (int i = 0; i < templates.size(); ++i) {
-            if (ImGui::Selectable(templates[i].name.c_str(), selectedTemplate == i)) {
-                selectedTemplate = i;
+
+        ImGui::BeginChild("TypeList", ImVec2(200, 150), true);
+        for (int i = 0; i < typeNames.size(); ++i) {
+            ImGui::PushID(i);
+            bool isSelected = (selectedTypeIndex == i);
+            if (ImGui::Selectable(typeNames[i].second.c_str(), isSelected)) {
+                selectedTypeIndex = i;
+                std::cout << "Selected entity type: " << typeNames[i].second << std::endl;
             }
+            if (isSelected)
+                ImGui::SetItemDefaultFocus();
+            ImGui::PopID();
         }
+        ImGui::EndChild();
 
-        ImGui::InputText("File Name", nameBuffer, IM_ARRAYSIZE(nameBuffer));
-
+        ImGui::InputText("Entity Name", nameBuffer, IM_ARRAYSIZE(nameBuffer));
         ImGui::Separator();
+
         if (ImGui::Button("Create & Save")) {
-            Entity e = EntityManager::get().createEntity();
-            for (const auto& comp : templates[selectedTemplate].components)
-                EntityManager::get().addComponent(e, comp);
+            if (strlen(nameBuffer) == 0) {
+                EditorUI::get()->setStatusMessage("Entity name cannot be empty.");
+                std::cout << "[ERROR] Entity name is empty.\n";
+            } else {
+                EntityType type = typeNames[selectedTypeIndex].first;
+                Entity e = EntityManager::get().createEntity();
+                std::cout << "Created new entity with ID: " << e << std::endl;
 
-            setSelectedEntity(e);
+                EntityManager::get().setEntityMeta(e, nameBuffer, type);
+                std::cout << "Entity metadata set. Name: " << nameBuffer << ", Type: " << static_cast<int>(type) << std::endl;
 
-            // Save to disk
-            json j = EntityManager::get().serializeEntity(e);
-            std::string fileName = std::string(nameBuffer) + ".entity";
-            ResourceManager::get().saveAssetFile(j, nameBuffer, ".entity");
+                auto it = templateMap.find(type);
+                if (it != templateMap.end()) {
+                    for (const auto& comp : it->second.components) {
+                        if (!comp) {
+                            std::cout << "[ERROR] Null component in template!\n";
+                            continue;
+                        }
+                        EntityManager::get().addComponent(e, comp);
+                    }
+                    std::cout << "Added " << it->second.components.size() << " components.\n";
+                } else {
+                    std::cout << "[WARNING] No template found for this type.\n";
+                }
 
-            EditorUI::get()->setStatusMessage("Created and saved: " + std::string(nameBuffer));
-            ImGui::CloseCurrentPopup();
-            nameBuffer[0] = '\0'; // reset
+                std::string fileName = ProjectManager::getCurrentProjectPath();
+                bool saved = ProjectManager::saveProjectToFile(fileName);
+
+                if (!saved) {
+                    std::cout << "[ERROR] Failed to save entity.\n";
+                    setStatusMessage("Failed to save project file.");
+                } else {
+                    std::cout << "Saved project file as: " << fileName << std::endl;
+                    setSelectedEntity(e);
+                    setStatusMessage("Created and saved: " + std::string(nameBuffer));
+                    shouldClosePopup = true;
+                    nameBuffer[0] = '\0';
+                }
+            }
         }
 
         ImGui::SameLine();
         if (ImGui::Button("Cancel")) {
-            ImGui::CloseCurrentPopup();
+            std::cout << "New entity creation cancelled.\n";
             nameBuffer[0] = '\0';
+            shouldClosePopup = true;
         }
+
+        if (shouldClosePopup)
+            ImGui::CloseCurrentPopup();
 
         ImGui::EndPopup();
     }

@@ -125,4 +125,14 @@ const std::unordered_map<ComponentType, RegisteredComponent>& getAllInfos() {
     return componentsByType;
 }
 
+ComponentType ComponentTypeRegistry::getTypeFromString(const std::string& key) {
+    auto it = stringToType.find(key);
+    if (it != stringToType.end()) {
+        return it->second;
+    } else {
+        throw std::runtime_error("Unknown component type string: " + key);
+    }
+}
+
+
 }

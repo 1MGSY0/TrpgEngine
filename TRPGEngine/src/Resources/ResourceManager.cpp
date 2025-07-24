@@ -54,7 +54,11 @@ bool ResourceManager::saveAssetFile(const nlohmann::json& j, const std::string& 
     std::filesystem::path path = folder / fileName;
 
     std::ofstream out(path);
-    if (!out.is_open()) return false;
+    std::cout << "Saving to: " << path.string() << std::endl;
+    if (!out.is_open()) {
+        std::cout << "[ERROR] Failed to open file for writing.\n";
+        return false;
+    }
 
     out << j.dump(4);
     m_unsaved = true;
@@ -102,7 +106,7 @@ bool ResourceManager::importFileAsset(const std::string& sourcePath, FileAssetTy
     std::string fileName = source.filename().string();
 
     // Define base folder for asset type
-    std::filesystem::path targetFolder = "Assets";
+    std::filesystem::path targetFolder = "Runtime/Assets";
 
     std::filesystem::create_directories(targetFolder);
     std::filesystem::path targetPath = targetFolder / fileName;
@@ -123,3 +127,5 @@ bool ResourceManager::importFileAsset(const std::string& sourcePath, FileAssetTy
 
     return true;
 }
+
+

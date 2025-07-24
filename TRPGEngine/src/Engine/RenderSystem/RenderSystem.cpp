@@ -21,6 +21,10 @@ void RenderSystem::endScene() {
 void RenderSystem::renderEntityEditor(Entity e) {
     auto& em = EntityManager::get();
 
+    // render hardcode
+    // create new mesh component (assiggn value)
+    // 
+
     if (auto t = em.getComponent<Transform2DComponent>(e)) {
         // Show preview box
         ImGui::GetWindowDrawList()->AddRect(

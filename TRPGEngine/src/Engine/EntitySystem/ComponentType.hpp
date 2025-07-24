@@ -27,6 +27,8 @@ enum class ComponentType {
 
 namespace ComponentTypeRegistry {
 
+ComponentType getTypeFromString(const std::string& key);
+
 using LoaderFn = std::function<std::shared_ptr<ComponentBase>(const nlohmann::json&)>;
 using ExtensionList = std::vector<std::string>;
 using InspectorRendererFn = std::function<void(std::shared_ptr<ComponentBase>)>;
