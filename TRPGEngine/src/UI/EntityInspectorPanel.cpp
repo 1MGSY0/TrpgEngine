@@ -20,7 +20,7 @@
  * @param em Reference to the active EntityManager.
  */
 
-inline void renderEntityInspector(Entity entity) {
+void EditorUI::renderEntityInspector(Entity entity) {
     auto& em = EntityManager::get();
 
     if (entity == INVALID_ENTITY) {
@@ -46,11 +46,34 @@ inline void renderEntityInspector(Entity entity) {
 
         ImGui::Combo("Component", &selectedIndex, cStrs.data(), static_cast<int>(cStrs.size()));
         if (ImGui::Button("Attach")) {
-            auto selectedType = types[selectedIndex];
-            const auto& info = ComponentTypeRegistry::getInfo(selectedType);
-            if (info && info->loader) {
-                auto component = info->loader(nlohmann::json{});
-                em.addComponent(entity, component);
+            const auto selectedType = types[selectedIndex];
+            if (const auto* info = ComponentTypeRegistry::getInfo(selectedType)) {
+                if (info->loader) {
+                    nlohmann::json init = nlohmann::json::object();
+                    auto comp = info->loader(init);
+                    
+                    const auto res = EntityManager::get().addComponent(entity, comp);
+                    switch (res) {
+                        case EntityManager::AddComponentResult::Ok:
+                            comp->Init(entity);
+                            setStatusMessage("Attached \"" + info->key + "\" to entity " + std::to_string(entity));
+                            break;
+                        case EntityManager::AddComponentResult::AlreadyExists:
+                            setStatusMessage("Entity already has \"" + info->key + "\" — not added.");
+                            break;
+                        case EntityManager::AddComponentResult::InvalidEntityId:
+                            setStatusMessage("Invalid entity id.");
+                            break;
+                        case EntityManager::AddComponentResult::EntityNotFound:
+                            setStatusMessage("Entity not found — did you create it?");
+                            break;
+                        case EntityManager::AddComponentResult::NullComponent:
+                            setStatusMessage("Factory returned null component.");
+                            break;
+                    }
+                } else {
+                    setStatusMessage("No loader registered for \"" + info->key + "\".");
+                }
             }
         }
     }

@@ -15,7 +15,6 @@
 
 #include "Engine/RenderSystem/SceneManager.hpp"
 #include "UI/FlowPanel/Flowchart.hpp"
-#include "UI/EntityInspectorPanel.hpp"
 
 GLuint loadTextureFromFile(const char* path);
 

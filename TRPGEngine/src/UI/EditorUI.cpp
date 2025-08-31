@@ -100,10 +100,16 @@ void EditorUI::render() {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
-    ImGui::Begin("MainDockSpace", nullptr, windowFlags);
+    bool began = ImGui::Begin("MainDockSpace", nullptr, windowFlags);
     ImGui::PopStyleVar(2);
 
-    // Ensure full screen background window has no padding
+    // If Begin() returns false you still must End() immediately.
+    if (!began) { ImGui::End(); return; }
+
+    // RAII guard: no matter what happens below, End() will be called.
+    struct EndOnExit { ~EndOnExit(){ ImGui::End(); } } _ensure_end;
+
+    // (keep the rest of your code exactly as-is)
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGuiID dockspace_id = ImGui::GetID("EditorDockspace");
     ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
@@ -111,20 +117,18 @@ void EditorUI::render() {
 
     if (m_shouldBuildDockLayout) {
         std::cout << "[EditorUI] Building initial dock layout...\n";
-        initDockLayout();\
-        m_shouldBuildDockLayout = false;
+        initDockLayout();
+        m_shouldBuildDockLayout = false;  // ← no stray backslash now
     }
 
     renderMenuBar();
-    renderFlowTabs();        // "Flow"
-    renderSceneTabs();       // "Scene"
-    renderInspectorTabs();   // "Entity Inspector"
-    renderAssetBrowser();    // "Assets"
-    renderStatusBar();       // "Status Bar"
+    renderFlowTabs();
+    renderSceneTabs();
+    renderInspectorTabs();
+    renderAssetBrowser();
+    renderStatusBar();
 
     showUnsavedChangesPopup();
-
-    ImGui::End();
 }
 
 
@@ -183,4 +187,31 @@ void EditorUI::setSelectedEntity(Entity e) {
 void EditorUI::forceFolderRefresh() {
     std::cout << "[EditorUI] Force-refreshing folder view...\n";
     m_forceRefresh = true; 
+}
+
+void EditorUI::StartNewProjectFlow_() {
+    // 1) Clear current session
+    ResourceManager::get().clear();
+    EntityManager::get().clear();
+    ProjectManager::setCurrentProjectPath("");
+
+    // 2) Create a default project file immediately
+    const std::string defaultProjectName = "Untitled";
+    const std::string defaultProjectPath = "Runtime/" + defaultProjectName + ".trpgproj";
+    std::error_code ec;
+    std::filesystem::create_directories("Runtime", ec);
+
+    if (!ProjectManager::CreateNewProject(defaultProjectName, defaultProjectPath)) {
+        setStatusMessage("Failed to create new project.");
+        return;
+    }
+
+    // 3) Mark current, set dirty (so user knows to save)
+    ProjectManager::setCurrentProjectPath(defaultProjectPath);
+    ResourceManager::get().setUnsavedChanges(true);
+
+    // 4) Ask the UI to show the Project Info popup (deferred-safe)
+    ProjectManager::requestProjectInfoPrompt();
+
+    setStatusMessage("New project created. Please fill in project info.");
 }

@@ -68,6 +68,8 @@ public:
     const std::string& getSelectedFileName() const { return m_selectedFileName; }
     const std::filesystem::path& getAssetsRoot() const { return m_assetsRoot; }
 
+    void openProjectInfoPopupOnce() { showProjectMetaPopup = true; }
+
 private:
     GLFWwindow* m_window;
     Flowchart m_flowChart;
@@ -89,7 +91,9 @@ private:
     void renderFolderPreview(const std::filesystem::path& folder);
     void renderRenamePopup();
     void renderNewEntityPopup();
+    void StartNewProjectFlow_();
     void renderProjectMetaPopup(Entity metaEntity);
+    void renderEntityInspector(Entity entity);
 
     // UI state
     bool showRenamePopup = false;

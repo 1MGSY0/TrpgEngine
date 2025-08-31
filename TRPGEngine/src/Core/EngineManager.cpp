@@ -2,6 +2,7 @@
 #include "Project/BuildSystem.hpp"
 #include "Project/ProjectManager.hpp"
 #include "Engine/EntitySystem/EntityManager.hpp"
+#include "Engine/EntitySystem/ComponentType.hpp"
 #include "Engine/EntitySystem/Components/ProjectMetaComponent.hpp"
 #include "Project/ProjectManager.hpp"
 
@@ -16,6 +17,10 @@ EngineManager& EngineManager::get() {
 
 void EngineManager::initialize() {
     std::cout << "[EngineManager] Initializing...\n";
+
+    // Populate the known component types and their factories/inspectors
+    ComponentTypeRegistry::registerBuiltins();
+    std::cout << "[Init] Registered components: " << ComponentTypeRegistry::getAllInfos().size() << "\n";
 
     // Initialize EntityManager & Project Meta
 
@@ -33,6 +38,7 @@ void EngineManager::initialize() {
         } else {
             ProjectManager::setCurrentProjectPath(defaultProjectPath);
             std::cout << "[EngineManager] Default project created.\n";
+            ProjectManager::requestProjectInfoPrompt();
         }
     }
     // Initialize other systems as needed

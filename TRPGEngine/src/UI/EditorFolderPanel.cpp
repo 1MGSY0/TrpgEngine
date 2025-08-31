@@ -15,7 +15,6 @@
 
 #include "Engine/RenderSystem/SceneManager.hpp"
 #include "UI/FlowPanel/Flowchart.hpp"
-#include "UI/EntityInspectorPanel.hpp"
 
 void EditorUI::renderFolderTree(const std::filesystem::path& path, const std::filesystem::path& base) {
     static std::filesystem::path hoveredFolder = m_selectedFolder;

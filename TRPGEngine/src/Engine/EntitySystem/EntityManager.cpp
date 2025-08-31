@@ -16,16 +16,18 @@ void EntityManager::clear() {
     m_nextId = 1;
 }
 
-Entity EntityManager::createEntity(Entity parent = INVALID_ENTITY) {
+Entity EntityManager::createEntity(Entity parent) {
     Entity id = m_nextId++;
-    m_metadata[id] = EntityMeta();
-    m_entities[id] = {};
+    m_metadata[id] = {};       // default meta
+    m_entities[id] = {};       // component map for this entity
 
     if (parent != INVALID_ENTITY) {
-        std::cerr << "[EntityManager] Parent entity " << parent << " does not exist.\n";
-        setEntityParent(id, parent);
+        if (m_metadata.find(parent) == m_metadata.end()) {
+            std::cerr << "[EntityManager] Parent " << parent << " does not exist.\n";
+        } else {
+            setEntityParent(id, parent);
+        }
     }
-
     return id;
 }
 
@@ -33,9 +35,45 @@ void EntityManager::destroyEntity(Entity entity) {
     m_entities.erase(entity);
 }
 
-void EntityManager::addComponent(Entity entity, std::shared_ptr<ComponentBase> component) {
-    m_entities[entity][component->getType()] = component;
+bool EntityManager::hasComponent(Entity e, ComponentType t) const {
+    auto it = m_entities.find(e);
+    if (it == m_entities.end()) return false;
+    return it->second.find(t) != it->second.end();
 }
+
+EntityManager::AddComponentResult
+EntityManager::addComponent(Entity e, std::shared_ptr<ComponentBase> c) {
+    if (e == INVALID_ENTITY) {
+        std::cerr << "[EntityManager] Refusing to add to INVALID_ENTITY.\n";
+        return AddComponentResult::InvalidEntityId;
+    }
+    auto it = m_entities.find(e);
+    if (it == m_entities.end()) {
+        std::cerr << "[EntityManager] Entity " << e << " not found. Did you call createEntity()?\n";
+        return AddComponentResult::EntityNotFound;
+    }
+    if (!c) {
+        std::cerr << "[EntityManager] Null component.\n";
+        return AddComponentResult::NullComponent;
+    }
+
+    const ComponentType t = c->getType();
+    if (it->second.find(t) != it->second.end()) {
+        std::cerr << "[EntityManager] Entity " << e
+                  << " already has component type " << static_cast<int>(t) << ". Skipping.\n";
+        return AddComponentResult::AlreadyExists;
+    }
+
+    it->second[t] = std::move(c);
+    return AddComponentResult::Ok;
+}
+
+bool EntityManager::removeComponent(Entity e, ComponentType t) {
+    auto it = m_entities.find(e);
+    if (it == m_entities.end()) return false;
+    return it->second.erase(t) > 0;
+}
+
 
 std::shared_ptr<ComponentBase> EntityManager::getComponent(Entity entity, ComponentType type) {
     auto it = m_entities.find(entity);
@@ -57,9 +95,6 @@ std::vector<std::shared_ptr<ComponentBase>> EntityManager::getAllComponents(Enti
     return result;
 }
 
-bool EntityManager::hasComponent(Entity entity, ComponentType type) {
-    return getComponent(entity, type) != nullptr;
-}
 
 std::vector<Entity> EntityManager::getAllEntities() const {
     std::vector<Entity> entities;
@@ -124,8 +159,7 @@ Entity EntityManager::deserializeEntity(const nlohmann::json& j) {
         );
 
         Entity parent = metaJ.value("parent", INVALID_ENTITY);
-        if (parent != INVALID_ENTITY)
-            setEntityParent(e, parent);
+        if (parent != INVALID_ENTITY) setEntityParent(e, parent);
     }
 
     // Load components
@@ -211,6 +245,23 @@ void EntityManager::setEntityParent(Entity child, Entity parent) {
     m_metadata[parent].children.push_back(child);
 }
 
+void EntityManager::setSelectedEntity(Entity entity) {
+    if (m_entities.find(entity) != m_entities.end()) {
+        m_selectedEntity = entity;
+        std::cout << "[EntityManager] Selected entity: " << entity << "\n";
+    } else {
+        std::cerr << "[EntityManager] Attempted to select invalid entity: " << entity << "\n";
+    }
+}
+
+Entity EntityManager::getSelectedEntity() const {
+    return m_selectedEntity;
+}
+
+bool EntityManager::hasSelectedEntity() const {
+    return m_entities.find(m_selectedEntity) != m_entities.end();
+}
+
 const EntityMeta* EntityManager::getMeta(Entity e) const {
     auto it = m_metadata.find(e);
     return it != m_metadata.end() ? &it->second : nullptr;
@@ -219,5 +270,53 @@ const EntityMeta* EntityManager::getMeta(Entity e) const {
 EntityMeta* EntityManager::getMeta(Entity e) {
     auto it = m_metadata.find(e);
     return it != m_metadata.end() ? &it->second : nullptr;
+}
+
+std::vector<Entity> EntityManager::getChildren(Entity parent) const {
+    auto it = m_metadata.find(parent);
+    if (it != m_metadata.end()) {
+        return it->second.children;
+    } else {
+        std::cerr << "[EntityManager] getChildren: No metadata for entity " << parent << "\n";
+        return {};
+    }
+}
+
+Entity EntityManager::getParent(Entity child) const {
+    auto it = m_metadata.find(child);
+    if (it != m_metadata.end()) {
+        return it->second.parent;
+    } else {
+        std::cerr << "[EntityManager] getParent: No metadata found for entity " << child << "\n";
+        return INVALID_ENTITY;
+    }
+}
+
+Entity EntityManager::getRoot(Entity child) const {
+    auto it = m_metadata.find(child);
+    if (it == m_metadata.end()) {
+        std::cerr << "[EntityManager] getRoot: No metadata found for entity " << child << "\n";
+        return INVALID_ENTITY;
+    }
+
+    Entity current = child;
+    while (true) {
+        auto meta = getMeta(current);
+        if (!meta || meta->parent == INVALID_ENTITY) {
+            return current;
+        }
+        current = meta->parent;
+    }
+}
+
+// Debug functions
+void EntityManager::printHierarchy(Entity root, int depth = 0) const {
+    const auto* meta = getMeta(root);
+    if (!meta) return;
+
+    std::cout << std::string(depth * 2, ' ') << "- " << meta->name << " (ID: " << root << ")\n";
+    for (Entity child : meta->children) {
+        printHierarchy(child, depth + 1);
+    }
 }
 

@@ -20,16 +20,25 @@ class EntityManager {
 public:
     static EntityManager& get();
 
+    enum class AddComponentResult {
+        Ok,
+        InvalidEntityId,
+        EntityNotFound,
+        NullComponent,
+        AlreadyExists
+    };
+
+
     Entity createEntity(Entity parent = INVALID_ENTITY);
     void destroyEntity(Entity entity);
     void clear();
 
-    
-    void addComponent(Entity e, std::shared_ptr<ComponentBase> component);
-    std::shared_ptr<ComponentBase> getComponent(Entity e, ComponentType type);
-    bool hasComponent(Entity e, ComponentType type);
-    std::vector<std::shared_ptr<ComponentBase>> getAllComponents(Entity e);
+    bool EntityManager::hasComponent(Entity e, ComponentType t) const;
+    AddComponentResult addComponent(Entity e, std::shared_ptr<ComponentBase> c);
+    bool removeComponent(Entity e, ComponentType t);
 
+    std::shared_ptr<ComponentBase> getComponent(Entity e, ComponentType type);
+    std::vector<std::shared_ptr<ComponentBase>> getAllComponents(Entity e);
     std::vector<Entity> getAllEntities() const;
 
     // Metadata
@@ -41,7 +50,12 @@ public:
     EntityMeta* getMeta(Entity e);
 
     // Hierarchy
+    Entity getParent(Entity child) const;
+    Entity getRoot(Entity child) const;
     std::vector<Entity> getChildren(Entity parent) const;
+    void setSelectedEntity(Entity entity);
+    Entity getSelectedEntity() const;
+    bool hasSelectedEntity() const;
 
     // IO
     nlohmann::json serializeEntity(Entity e) const;
@@ -58,10 +72,14 @@ public:
     template<typename T>
     std::shared_ptr<T> getComponent(Entity entity);
 
+    // Debug functions
+    void printHierarchy(Entity root, int depth) const;
+
 private:
     EntityManager() = default;
 
     Entity m_nextId = 1;
+    Entity m_selectedEntity = INVALID_ENTITY;
     std::unordered_map<Entity, std::unordered_map<ComponentType, std::shared_ptr<ComponentBase>>> m_entities;
     std::unordered_map<Entity, EntityMeta> m_metadata;
 

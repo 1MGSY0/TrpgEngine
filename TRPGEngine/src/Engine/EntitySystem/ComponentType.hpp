@@ -27,20 +27,21 @@ enum class ComponentType {
 
 namespace ComponentTypeRegistry {
 
-ComponentType getTypeFromString(const std::string& key);
+    ComponentType getTypeFromString(const std::string& key);
 
-using LoaderFn = std::function<std::shared_ptr<ComponentBase>(const nlohmann::json&)>;
-using ExtensionList = std::vector<std::string>;
-using InspectorRendererFn = std::function<void(std::shared_ptr<ComponentBase>)>;
+    using LoaderFn = std::function<std::shared_ptr<ComponentBase>(const nlohmann::json&)>;
+    using ExtensionList = std::vector<std::string>;
+    using InspectorRendererFn = std::function<void(std::shared_ptr<ComponentBase>)>;
 
-struct RegisteredComponent {
-    LoaderFn loader;
-    std::string key;
-    InspectorRendererFn inspectorRenderer = nullptr;
-};
+    struct RegisteredComponent {
+        LoaderFn loader;
+        std::string key;
+        InspectorRendererFn inspectorRenderer = nullptr;
+    };
 
-void registerBuiltins();
-const RegisteredComponent* getInfo(ComponentType type);
-const std::unordered_map<ComponentType, RegisteredComponent>& getAllInfos();
+    void registerBuiltins();
+    const RegisteredComponent* getInfo(ComponentType type);
+    const RegisteredComponent* getInfo(int typeInt);
+    const std::unordered_map<ComponentType, RegisteredComponent>& getAllInfos();
 
 }

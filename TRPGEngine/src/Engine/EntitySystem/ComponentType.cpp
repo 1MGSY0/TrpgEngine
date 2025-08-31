@@ -116,9 +116,14 @@ void registerBuiltins() {
     );
 }
 
-const RegisteredComponent* getInfo(ComponentType type) {
+const ComponentTypeRegistry::RegisteredComponent* ComponentTypeRegistry::getInfo(ComponentType type) {
     auto it = componentsByType.find(type);
     return it != componentsByType.end() ? &it->second : nullptr;
+}
+
+const ComponentTypeRegistry::RegisteredComponent* ComponentTypeRegistry::getInfo(int typeInt) {
+    ComponentType type = static_cast<ComponentType>(typeInt);
+    return getInfo(type); 
 }
 
 const std::unordered_map<ComponentType, RegisteredComponent>& getAllInfos() {

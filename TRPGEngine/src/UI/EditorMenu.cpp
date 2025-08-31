@@ -14,10 +14,7 @@ void EditorUI::renderMenuBar() {
                     m_showUnsavedPrompt = true;
                     m_actionAfterPrompt = true;
                 } else {
-                    ResourceManager::get().clear();
-                    EntityManager::get().clear();
-                    ProjectManager::setCurrentProjectPath("");
-                    ResourceManager::get().setUnsavedChanges(true);
+                    StartNewProjectFlow_();              
                 }
             }
 
@@ -189,7 +186,7 @@ void EditorUI::renderMenuBar() {
     // Now call render logic
     renderRenamePopup();
     renderNewEntityPopup();
-    renderProjectMetaPopup(EngineManager::get().getProjectMetaEntity());
+    renderProjectMetaPopup(ProjectManager::getProjectMetaEntity());
 }
 
 void EditorUI::renderProjectMetaPopup(Entity metaEntity) {
@@ -393,7 +390,7 @@ void EditorUI::renderNewEntityPopup() {
                 std::cout << "[ERROR] Entity name is empty.\n";
             } else {
                 EntityType type = typeNames[selectedTypeIndex].first;
-                Entity e = EntityManager::get().createEntity();
+                Entity e = EntityManager::get().createEntity(EntityManager::get().getSelectedEntity());
                 std::cout << "Created new entity with ID: " << e << std::endl;
 
                 EntityManager::get().setEntityMeta(e, nameBuffer, type);
