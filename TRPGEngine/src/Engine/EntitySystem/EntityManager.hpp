@@ -31,6 +31,7 @@ public:
 
     Entity createEntity(Entity parent = INVALID_ENTITY);
     void destroyEntity(Entity entity);
+    bool entityExists(Entity e) const;
     void clear();
 
     bool EntityManager::hasComponent(Entity e, ComponentType t) const;
@@ -56,6 +57,7 @@ public:
     void setSelectedEntity(Entity entity);
     Entity getSelectedEntity() const;
     bool hasSelectedEntity() const;
+    std::vector<Entity> getEntitiesWith(ComponentType t) const;
 
     // IO
     nlohmann::json serializeEntity(Entity e) const;

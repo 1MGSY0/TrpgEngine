@@ -39,6 +39,19 @@ bool ProjectManager::CreateNewProject(const std::string& projectName, const std:
     EntityManager::get().setEntityMeta(s_projectMetaEntity, projectName, EntityType::ProjectMeta);
     setProjectMetaEntity(s_projectMetaEntity);
 
+    {
+        auto meta = std::make_shared<ProjectMetaComponent>();
+        meta->projectName = projectName.empty() ? "Untitled" : projectName;
+        meta->version     = "1.0.0";
+        meta->author      = "Unknown";
+        meta->isActive    = true;
+        meta->startNode   = INVALID_ENTITY;
+
+        auto res = EntityManager::get().addComponent(s_projectMetaEntity, meta);
+        std::cout << "[ProjectManager] Attached ProjectMetaComponent to entity "
+                << (int)s_projectMetaEntity << " (result=" << (int)res << ")\n";
+    }
+
     // Prompt the user for project info right away
     if (auto* ui = EditorUI::get()) {
         ui->openProjectInfoPopupOnce();
@@ -123,11 +136,12 @@ void ProjectManager::setTempLoadPath(const std::string& path) {
 }
 
 void ProjectManager::requestProjectInfoPrompt() {
+    std::cout << "[ProjectManager] requestProjectInfoPrompt(): latch set\n";
     s_needProjectInfoPrompt = true;
 }
-
 bool ProjectManager::consumeProjectInfoPrompt() {
     if (!s_needProjectInfoPrompt) return false;
     s_needProjectInfoPrompt = false;
+    std::cout << "[ProjectManager] consumeProjectInfoPrompt(): latch consumed\n";
     return true;
 }

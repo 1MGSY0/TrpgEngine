@@ -190,28 +190,28 @@ void EditorUI::forceFolderRefresh() {
 }
 
 void EditorUI::StartNewProjectFlow_() {
-    // 1) Clear current session
+    std::cout << "[EditorUI] StartNewProjectFlow_: clearing session\n";
     ResourceManager::get().clear();
     EntityManager::get().clear();
     ProjectManager::setCurrentProjectPath("");
 
-    // 2) Create a default project file immediately
     const std::string defaultProjectName = "Untitled";
     const std::string defaultProjectPath = "Runtime/" + defaultProjectName + ".trpgproj";
     std::error_code ec;
     std::filesystem::create_directories("Runtime", ec);
+    if (ec) std::cout << "[EditorUI] create_directories Runtime error: " << ec.message() << "\n";
 
+    std::cout << "[EditorUI] CreateNewProject(name=" << defaultProjectName
+              << ", path=" << defaultProjectPath << ")\n";
     if (!ProjectManager::CreateNewProject(defaultProjectName, defaultProjectPath)) {
+        std::cout << "[EditorUI] CreateNewProject FAILED\n";
         setStatusMessage("Failed to create new project.");
         return;
     }
 
-    // 3) Mark current, set dirty (so user knows to save)
     ProjectManager::setCurrentProjectPath(defaultProjectPath);
     ResourceManager::get().setUnsavedChanges(true);
-
-    // 4) Ask the UI to show the Project Info popup (deferred-safe)
-    ProjectManager::requestProjectInfoPrompt();
-
+    std::cout << "[EditorUI] New project created -> requestProjectInfoPrompt()\n";
+    ProjectManager::requestProjectInfoPrompt();   // deferred-safe
     setStatusMessage("New project created. Please fill in project info.");
 }

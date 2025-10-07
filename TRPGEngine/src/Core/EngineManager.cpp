@@ -8,7 +8,6 @@
 
 #include <iostream>
 
-Entity m_projectMetaEntity = INVALID_ENTITY;
 
 EngineManager& EngineManager::get() {
     static EngineManager instance;
@@ -34,6 +33,7 @@ void EngineManager::initialize() {
         std::filesystem::create_directories("Runtime");
 
         if (!ProjectManager::CreateNewProject(defaultProjectName, defaultProjectPath)) {
+            ProjectManager::setCurrentProjectPath(defaultProjectPath);
             std::cerr << "[EngineManager] Failed to create default project.\n";
         } else {
             ProjectManager::setCurrentProjectPath(defaultProjectPath);

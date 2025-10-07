@@ -17,9 +17,9 @@ public:
     // All scenes (FlowNodes) part of this project
     std::vector<Entity> sceneNodes;
 
-    ComponentType getType() const override { return ComponentType::ProjectMetadata; }
     std::string getID() const override { return projectName; }
     static ComponentType getStaticType() { return ComponentType::ProjectMetadata; }
+    ComponentType getType() const override { return getStaticType(); }
 
     nlohmann::json toJson() const override {
         nlohmann::json j;

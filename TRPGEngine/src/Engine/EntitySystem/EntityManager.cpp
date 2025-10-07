@@ -35,6 +35,10 @@ void EntityManager::destroyEntity(Entity entity) {
     m_entities.erase(entity);
 }
 
+bool EntityManager::entityExists(Entity e) const {
+    return m_entities.find(e) != m_entities.end();
+}
+
 bool EntityManager::hasComponent(Entity e, ComponentType t) const {
     auto it = m_entities.find(e);
     if (it == m_entities.end()) return false;
@@ -102,6 +106,17 @@ std::vector<Entity> EntityManager::getAllEntities() const {
         entities.push_back(id);
     }
     return entities;
+}
+
+std::vector<Entity> EntityManager::getEntitiesWith(ComponentType t) const {
+    std::vector<Entity> out;
+    out.reserve(m_entities.size());
+    for (const auto& kv : m_entities) {
+        const Entity e = kv.first;
+        const auto& cmap = kv.second;
+        if (cmap.find(t) != cmap.end()) out.push_back(e);
+    }
+    return out;
 }
 
 nlohmann::json EntityManager::serializeEntity(Entity e) const {

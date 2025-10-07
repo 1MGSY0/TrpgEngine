@@ -16,8 +16,8 @@ public:
     static bool save();
     static bool saveProjectToFile(const std::string& filePath);
 
-    static void ProjectManager::setProjectMetaEntity(Entity e) ;
-    static Entity ProjectManager::getProjectMetaEntity() {return s_projectMetaEntity;}
+    static void setProjectMetaEntity(Entity e);
+    static Entity getProjectMetaEntity() { return s_projectMetaEntity; }
 
     static void requestProjectInfoPrompt();     // set the latch
     static bool consumeProjectInfoPrompt();     // read+clear the latch

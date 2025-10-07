@@ -16,51 +16,55 @@
 struct EntityTemplate {
     std::string name;
     EntityType type;
-    std::vector<std::shared_ptr<ComponentBase>> components;
+    std::vector<std::function<std::shared_ptr<ComponentBase>()>> factories;
 };
 
 inline const std::unordered_map<EntityType, EntityTemplate>& getEntityTemplateMap() {
     static std::unordered_map<EntityType, EntityTemplate> templates = {
         {
             EntityType::FlowNode,
-            { "Flow Node", EntityType::FlowNode,{
-                std::make_shared<Transform2DComponent>(),
-                std::make_shared<FlowNodeComponent>()
+            { "Flow Node", EntityType::FlowNode, {
+                [] { auto c = std::make_shared<FlowNodeComponent>();
+                     // defaults (explicit to be safe)
+                     c->name = "";
+                     c->nextNode = INVALID_ENTITY;
+                     return c;
+                }
             } }
         },
         {
             EntityType::Dialogue,
             { "Dialogue", EntityType::Dialogue,{
-                std::make_shared<Transform2DComponent>(),
-                std::make_shared<DialogueComponent>()
+                [] { return std::make_shared<Transform2DComponent>(); },
+                [] { return std::make_shared<DialogueComponent>(); }
             } }
         },
         {
             EntityType::Character,
             { "Character", EntityType::Character,{
-                std::make_shared<Transform2DComponent>(),
-                std::make_shared<CharacterComponent>()
+                [] { return std::make_shared<Transform2DComponent>(); },
+                [] { return std::make_shared<CharacterComponent>(); }
             } }
         },
         {
             EntityType::UIButton,
             { "UI Button", EntityType::UIButton,{
-                std::make_shared<Transform2DComponent>(),
-                std::make_shared<UIButtonComponent>()
+                [] { return std::make_shared<Transform2DComponent>(); },
+                [] { return std::make_shared<UIButtonComponent>(); }
             } }
         },
         {
             EntityType::Choice,
             { "Choice", EntityType::Choice,{
-                std::make_shared<Transform2DComponent>(),
-                std::make_shared<ChoiceComponent>()
+                [] { return std::make_shared<Transform2DComponent>(); },
+                [] { return std::make_shared<ChoiceComponent>(); }
             } }
         },
         {
             EntityType::DiceRoll,
             { "Dice Roll", EntityType::DiceRoll,{
-                std::make_shared<Transform2DComponent>(),
-                std::make_shared<DiceRollComponent>()
+                [] { return std::make_shared<Transform2DComponent>(); },
+                [] { return std::make_shared<DiceRollComponent>(); }
             } }
         }
     };

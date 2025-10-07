@@ -9,12 +9,32 @@ void EditorUI::renderMenuBar() {
         // ---------------- FILE MENU ----------------
         if (ImGui::BeginMenu("Project")) {
             if (ImGui::MenuItem("New Project")) {
+                std::cout << "[EditorUI] Menu: New Project clicked\n";
                 if (ResourceManager::get().hasUnsavedChanges()) {
+                    std::cout << "[EditorUI] Unsaved changes -> opening Unsaved Changes modal\n";
                     ImGui::OpenPopup("Unsaved Changes");
                     m_showUnsavedPrompt = true;
-                    m_actionAfterPrompt = true;
+                    m_actionAfterPrompt = true; // means: do New Project after prompt
                 } else {
-                    StartNewProjectFlow_();              
+                    std::cout << "[EditorUI] No unsaved changes -> creating default project\n";
+                    ResourceManager::get().clear();
+                    EntityManager::get().clear();
+                    ProjectManager::setCurrentProjectPath("");
+                    std::error_code ec;
+                    std::filesystem::create_directories("Runtime", ec);
+                    if (ec) std::cout << "[EditorUI] create_directories(Runtime) error: " << ec.message() << "\n";
+
+                    const std::string name = "Untitled";
+                    const std::string path = "Runtime/" + name + ".trpgproj";
+                    std::cout << "[EditorUI] CreateNewProject(name=" << name << ", path=" << path << ")\n";
+                    if (!ProjectManager::CreateNewProject(name, path)) {
+                        std::cout << "[EditorUI] CreateNewProject FAILED\n";
+                    } else {
+                        ProjectManager::setCurrentProjectPath(path);
+                        ResourceManager::get().setUnsavedChanges(true);
+                        std::cout << "[EditorUI] New project created -> requestProjectInfoPrompt()\n";
+                        ProjectManager::requestProjectInfoPrompt();   // deferred-safe
+                    }
                 }
             }
 
@@ -178,6 +198,12 @@ void EditorUI::renderMenuBar() {
         showNewEntityPopup = false;
     }
 
+    // (PROJECT INFO)
+    if (ProjectManager::consumeProjectInfoPrompt()) {
+        std::cout << "[EditorUI] consumeProjectInfoPrompt() = true, will OpenPopup(ProjectMetaPopup)\n";
+        openProjectInfoPopupOnce(); // flips showProjectMetaPopup
+    }
+
     if (showProjectMetaPopup) {
         ImGui::OpenPopup("ProjectMetaPopup");
         showProjectMetaPopup = false;
@@ -193,10 +219,15 @@ void EditorUI::renderProjectMetaPopup(Entity metaEntity) {
 
     if (ImGui::BeginPopupModal("ProjectMetaPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         auto& em = EntityManager::get();
-        auto base = em.getComponent(metaEntity, ComponentType::ProjectMetadata); // still using SceneMetadata enum
+        std::cout << "[EditorUI] ProjectMetaPopup: metaEntity=" << (int)metaEntity << "\n";
+
+        auto base = em.getComponent(metaEntity, ComponentType::ProjectMetadata);
         if (!base) {
-            ImGui::Text("Project Metadata component missing.");
-            return;
+            std::cout << "[EditorUI] ProjectMetaPopup: component missing -> creating now\n";
+            auto metaComp = std::make_shared<ProjectMetaComponent>();
+            auto res = em.addComponent(metaEntity, metaComp);
+            std::cout << "[EditorUI] ProjectMetaPopup: addComponent result=" << (int)res << "\n";
+            base = metaComp; // continue below with a valid component
         }
 
         auto meta = std::static_pointer_cast<ProjectMetaComponent>(base);
@@ -262,7 +293,14 @@ void EditorUI::renderProjectMetaPopup(Entity metaEntity) {
         ImGui::Separator();
         ImGui::TextDisabled("Note: Project = ProjectMetaComponent. Scenes = FlowNodes.");
 
+        if (ImGui::Button("Save")) {
+            std::cout << "[EditorUI] ProjectMetaPopup: Save\n";
+            // TODO: write back fields to meta + mark unsaved
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
         if (ImGui::Button("Close")) {
+            std::cout << "[EditorUI] ProjectMetaPopup: Close\n";
             ImGui::CloseCurrentPopup();
         }
 
@@ -398,14 +436,15 @@ void EditorUI::renderNewEntityPopup() {
 
                 auto it = templateMap.find(type);
                 if (it != templateMap.end()) {
-                    for (const auto& comp : it->second.components) {
-                        if (!comp) {
-                            std::cout << "[ERROR] Null component in template!\n";
-                            continue;
-                        }
+                    size_t added = 0;
+                    for (const auto& make : it->second.factories) {
+                        if (!make) { std::cout << "[ERROR] Null factory in template!\n"; continue; }
+                        auto comp = make();                                   // ← fresh instance
+                        if (!comp) { std::cout << "[ERROR] Factory returned null!\n"; continue; }
                         EntityManager::get().addComponent(e, comp);
+                        ++added;
                     }
-                    std::cout << "Added " << it->second.components.size() << " components.\n";
+                    std::cout << "Added " << added << " components.\n";
                 } else {
                     std::cout << "[WARNING] No template found for this type.\n";
                 }
