@@ -4,7 +4,6 @@
 #include "Engine/EntitySystem/EntityManager.hpp"
 #include "Engine/EntitySystem/ComponentType.hpp"
 #include "Engine/EntitySystem/Components/ProjectMetaComponent.hpp"
-#include "Project/ProjectManager.hpp"
 
 #include <iostream>
 

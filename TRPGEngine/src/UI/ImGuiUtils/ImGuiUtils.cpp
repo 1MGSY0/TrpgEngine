@@ -1,19 +1,14 @@
-
 #include <imgui.h>
 #include <Windows.h>
 #include <commdlg.h>
 #include <filesystem>
-#include <iostream>
 #include <string>
-#include <shellapi.h>
 
-#include "UI/EditorUI.hpp"
-#include "ImGuiUtils.hpp"
+#include "UI/ImGuiUtils/ImGuiUtils.hpp"
 
 namespace fs = std::filesystem;
-static std::vector<std::string> s_droppedFiles;
 
-// --- File Dialogs ---
+// --- File Dialogs (with and without explicit filters) ---
 std::string openFileDialog(const char* filter) {
     char filename[MAX_PATH] = "";
     OPENFILENAMEA ofn = { sizeof(ofn) };
@@ -42,25 +37,17 @@ std::string saveFileDialog(const char* filter) {
     return "";
 }
 
-void handleOSFileDrop(HDROP hDrop, EditorUI* editor) {
-    if (!hDrop || !editor) return;
+// Default-filter overloads for convenience
+std::string openFileDialog() {
+    static const char* kDefaultFilter =
+        "TRPG Project (*.trpgproj)\0*.trpgproj\0All Files (*.*)\0*.*\0";
+    return openFileDialog(kDefaultFilter);
+}
 
-    UINT fileCount = DragQueryFileA(hDrop, 0xFFFFFFFF, nullptr, 0);
-    if (fileCount == 0) {
-        editor->setStatusMessage("Drop failed: No files detected.");
-        DragFinish(hDrop);
-        return;
-    }
-
-    s_pendingDroppedPaths.clear();
-    for (UINT i = 0; i < fileCount; ++i) {
-        char filePath[MAX_PATH];
-        if (DragQueryFileA(hDrop, i, filePath, MAX_PATH)) {
-            s_pendingDroppedPaths.emplace_back(filePath);
-        }
-    }
-
-    DragFinish(hDrop);
+std::string saveFileDialog() {
+    static const char* kDefaultFilter =
+        "TRPG Project (*.trpgproj)\0*.trpgproj\0All Files (*.*)\0*.*\0";
+    return saveFileDialog(kDefaultFilter);
 }
 
 // --- Theme styling ---

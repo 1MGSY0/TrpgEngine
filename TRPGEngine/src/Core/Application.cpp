@@ -7,9 +7,7 @@
 #include <thread>
 #include <chrono>
 #include <filesystem> 
-
 #include <Windows.h>
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -17,7 +15,7 @@
 #include "EngineManager.hpp"
 #include "Engine/GameplaySystem/GameInstance.hpp"
 #include "UI/EditorUI.hpp"
-#include "UI/ImGUIUtils/ImGuiUtils.hpp"
+#include "UI/ImGuiUtils/ImGuiUtils.hpp"
 
 Application::Application()
     : m_window(nullptr) {

@@ -2,6 +2,7 @@
 
 #include "UI/ScenePanel/ScenePanel.hpp"
 #include "Engine/RenderSystem/SceneManager.hpp"
+#include "Engine/GameplaySystem/GameInstance.hpp"  // + overlay status
 
 #include <glad/glad.h>
 #include <imgui.h>
@@ -60,6 +61,10 @@ void ScenePanel::renderScenePanel() {
     ImGui::Begin("Scene Panel", nullptr, flags);
 
     ImVec2 contentSize = ImGui::GetContentRegionAvail();
+    if (contentSize.x <= 0.0f || contentSize.y <= 0.0f) {
+        ImGui::End();
+        return;
+    }
     if (contentSize.x > 0 && contentSize.y > 0 &&
         (contentSize.x != m_panelSize.x || contentSize.y != m_panelSize.y)) {
         m_panelSize = contentSize;
@@ -81,6 +86,31 @@ void ScenePanel::renderScenePanel() {
     if (m_colorTexture) {
         ImTextureID texID = (ImTextureID)(intptr_t)m_colorTexture;
         ImGui::Image(texID, m_panelSize, ImVec2(0, 1), ImVec2(1, 0));
+    }
+
+    // --- Minimal Play overlay (non-interactive placeholder) ---
+    if (GameInstance::get().isRunning()) {
+        ImVec2 winPos = ImGui::GetItemRectMin();   // top-left of the image
+        ImVec2 winSize = ImGui::GetItemRectSize(); // size of the image
+
+        ImGui::SetNextWindowPos(winPos);
+        ImGui::SetNextWindowSize(winSize);
+        ImGui::SetNextWindowBgAlpha(0.20f);
+        ImGuiWindowFlags overlayFlags =
+            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs |
+            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoScrollbar;
+
+        if (ImGui::Begin("SceneOverlayHUD", nullptr, overlayFlags)) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.95f, 1.0f, 1.0f));
+            ImGui::TextUnformatted("Play Mode");
+            ImGui::Separator();
+            ImGui::PopStyleColor();
+
+            ImGui::TextDisabled("Dialogue/Choice/Dice UI will appear here.");
+            ImGui::TextDisabled("Next: wire to Flow runner for in-editor HUD.");
+        }
+        ImGui::End();
     }
 
     ImGui::End();

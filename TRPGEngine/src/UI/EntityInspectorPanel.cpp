@@ -5,11 +5,14 @@
 #include <fstream>
 #include <cstring>
 #include <filesystem>
+#include <vector>
+#include <string>
 
 #include "UI/EditorUI.hpp"
 #include "Engine/RenderSystem/SceneManager.hpp"
 #include "Engine/EntitySystem/EntityManager.hpp"
 #include "Engine/EntitySystem/Entity.hpp"
+#include "Engine/EntitySystem/ComponentRegistry.hpp"
 
 /**
  * Renders the Inspector UI for a given entity.
@@ -42,16 +45,16 @@ void EditorUI::renderEntityInspector(Entity entity) {
         }
 
         std::vector<const char*> cStrs;
+        cStrs.reserve(keys.size());
         for (const auto& k : keys) cStrs.push_back(k.c_str());
 
-        ImGui::Combo("Component", &selectedIndex, cStrs.data(), static_cast<int>(cStrs.size()));
-        if (ImGui::Button("Attach")) {
+        ImGui::Combo("Component##AddComp", &selectedIndex, cStrs.data(), static_cast<int>(cStrs.size()));
+        if (ImGui::Button("Attach##AddComp")) {
             const auto selectedType = types[selectedIndex];
             if (const auto* info = ComponentTypeRegistry::getInfo(selectedType)) {
                 if (info->loader) {
                     nlohmann::json init = nlohmann::json::object();
                     auto comp = info->loader(init);
-                    
                     const auto res = EntityManager::get().addComponent(entity, comp);
                     switch (res) {
                         case EntityManager::AddComponentResult::Ok:
@@ -80,7 +83,50 @@ void EditorUI::renderEntityInspector(Entity entity) {
 
     ImGui::Separator();
 
-    // 2. Display Existing Components
+    // 1b. Remove Component Section (only present components)
+    if (ImGui::CollapsingHeader("Remove Component", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // Build list of components actually on this entity
+        std::vector<std::string> presentKeys;
+        std::vector<ComponentType> presentTypes;
+        for (const auto& comp : em.getAllComponents(entity)) {
+            const auto* info = ComponentTypeRegistry::getInfo(comp->getType());
+            if (!info) continue;
+            presentKeys.push_back(info->key);
+            presentTypes.push_back(comp->getType());
+        }
+
+        if (presentKeys.empty()) {
+            ImGui::TextDisabled("This entity has no components.");
+        } else {
+            static int removeIndex = 0;
+            std::vector<const char*> cStrs;
+            cStrs.reserve(presentKeys.size());
+            for (const auto& k : presentKeys) cStrs.push_back(k.c_str());
+
+            ImGui::Combo("Component##RemoveComp", &removeIndex, cStrs.data(), static_cast<int>(cStrs.size()));
+
+            bool protectedComp = (presentTypes[removeIndex] == ComponentType::ProjectMetadata);
+            if (protectedComp) {
+                ImGui::TextDisabled("(ProjectMetadata cannot be removed)");
+            }
+
+            if (ImGui::Button("Remove##RemoveComp") && !protectedComp) {
+                const auto typeToRemove = presentTypes[removeIndex];
+                const auto* info = ComponentTypeRegistry::getInfo(typeToRemove);
+                if (em.removeComponent(entity, typeToRemove)) {
+                    setStatusMessage(std::string("Removed component: ") + (info ? info->key : "<unknown>"));
+                    // Clamp index
+                    if (removeIndex >= (int)presentTypes.size() - 1) removeIndex = std::max(0, (int)presentTypes.size() - 2);
+                } else {
+                    setStatusMessage("Failed to remove component.");
+                }
+            }
+        }
+    }
+
+    ImGui::Separator();
+
+    // 2. Display Existing Components with their inspectors
     const auto& components = em.getAllComponents(entity);
     if (components.empty()) {
         ImGui::Text("This entity has no components.");

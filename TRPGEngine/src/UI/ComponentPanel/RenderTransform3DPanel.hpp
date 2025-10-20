@@ -1,5 +1,6 @@
 #pragma once
 
+#include <imgui.h>
 #include "UI/EditorUI.hpp"
 #include "Engine/EntitySystem/Components/TransformComponent.hpp"
 

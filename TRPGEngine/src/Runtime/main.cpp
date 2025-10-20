@@ -2,6 +2,6 @@
 
 int main() {
     RuntimeApp app;
-    app.run("Runtime/Assets");
+    app.run("Runtime/data.json");
     return 0;
 }

@@ -1,5 +1,6 @@
 #include "EditorUI.hpp"
 #include <iostream>
+#include "UI/ImGuiUtils/ImGuiUtils.hpp"
 
 using json = nlohmann::json;
 
@@ -39,7 +40,8 @@ void EditorUI::renderMenuBar() {
             }
 
             if (ImGui::MenuItem("Open Project...")) {
-                std::string path = openFileDialog();
+                const char* projFilter = "TRPG Project (*.trpgproj)\0*.trpgproj\0All Files (*.*)\0*.*\0";
+                std::string path = openFileDialog(projFilter);
                 if (!path.empty()) {
                     if (ResourceManager::get().hasUnsavedChanges()) {
                         m_showUnsavedPrompt = true;
@@ -52,8 +54,9 @@ void EditorUI::renderMenuBar() {
             }
 
             if (ImGui::MenuItem("Save Project")) {
+                const char* projFilter = "TRPG Project (*.trpgproj)\0*.trpgproj\0All Files (*.*)\0*.*\0";
                 std::string path = ProjectManager::getCurrentProjectPath();
-                if (path.empty()) path = saveFileDialog();
+                if (path.empty()) path = saveFileDialog(projFilter);
 
                 if (!path.empty()) {
                     ProjectManager::setCurrentProjectPath(path);
@@ -63,7 +66,8 @@ void EditorUI::renderMenuBar() {
             }
 
             if (ImGui::MenuItem("Save Project As...")) {
-                std::string path = saveFileDialog();
+                const char* projFilter = "TRPG Project (*.trpgproj)\0*.trpgproj\0All Files (*.*)\0*.*\0";
+                std::string path = saveFileDialog(projFilter);
                 if (!path.empty()) {
                     ProjectManager::saveProjectToFile(path);
                     ProjectManager::setCurrentProjectPath(path);
@@ -99,7 +103,8 @@ void EditorUI::renderMenuBar() {
                     if (path.empty()) {
                         ImGui::OpenPopup("Missing Project Path");
                     } else {
-                        std::string out = openFileDialog();
+                        const char* anyFilter = "All Files (*.*)\0*.*\0";
+                        std::string out = openFileDialog(anyFilter);
                         if (!out.empty()) {
                             bool success = BuildSystem::buildProject(path, out);
                             setStatusMessage(success ? "Build successful." : "Build failed.");

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <imgui.h>
+#include <cstring>
 #include "UI/EditorUI.hpp"
 #include "Engine/EntitySystem/Components/CharacterComponent.hpp"
 
@@ -9,25 +11,47 @@ inline void renderCharacterInspector(const std::shared_ptr<CharacterComponent>& 
         return;
     }
 
-    // Editable name
-    ImGui::InputText("Name", &character->name);
-
-    // --- Icon Image with drag-drop ---
-    ImGui::InputText("Icon Image", &character->iconImage);
-    if (ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATH")) {
-            const char* path = static_cast<const char*>(payload->Data);
-            character->iconImage = path;
+    // Editable name (buffered)
+    {
+        char nameBuf[128];
+        std::strncpy(nameBuf, character->name.c_str(), sizeof(nameBuf));
+        nameBuf[sizeof(nameBuf) - 1] = '\0';
+        if (ImGui::InputText("Name", nameBuf, sizeof(nameBuf))) {
+            character->name = nameBuf;
         }
-        ImGui::EndDragDropTarget();
     }
 
-    // --- State Images ---
+    // Icon Image with drag-drop (buffered)
+    {
+        char iconBuf[260];
+        std::strncpy(iconBuf, character->iconImage.c_str(), sizeof(iconBuf));
+        iconBuf[sizeof(iconBuf) - 1] = '\0';
+        if (ImGui::InputText("Icon Image", iconBuf, sizeof(iconBuf))) {
+            character->iconImage = iconBuf;
+        }
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATH")) {
+                const char* path = static_cast<const char*>(payload->Data);
+                character->iconImage = path;
+            }
+            ImGui::EndDragDropTarget();
+        }
+    }
+
+    // State Images
     if (ImGui::CollapsingHeader("State Images")) {
-        for (auto& [state, path] : character->stateImages) {
+        for (auto& kv : character->stateImages) {
+            const std::string& state = kv.first;
+            std::string& path = kv.second;
+
             ImGui::PushID(state.c_str());
 
-            ImGui::InputText("Path", &path);
+            char pathBuf[260];
+            std::strncpy(pathBuf, path.c_str(), sizeof(pathBuf));
+            pathBuf[sizeof(pathBuf) - 1] = '\0';
+            if (ImGui::InputText("Path", pathBuf, sizeof(pathBuf))) {
+                path = pathBuf;
+            }
             if (ImGui::BeginDragDropTarget()) {
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATH")) {
                     const char* dropped = static_cast<const char*>(payload->Data);
@@ -35,54 +59,53 @@ inline void renderCharacterInspector(const std::shared_ptr<CharacterComponent>& 
                 }
                 ImGui::EndDragDropTarget();
             }
-
             ImGui::SameLine();
             ImGui::TextDisabled("State: %s", state.c_str());
 
             ImGui::PopID();
         }
 
-        static std::string newState;
-        static std::string newPath;
+        static char newState[64] = {0};
+        static char newPath[260] = {0};
 
-        ImGui::InputText("State", &newState);
-        ImGui::InputText("Path", &newPath);
+        ImGui::InputText("State", newState, sizeof(newState));
+        ImGui::InputText("Path", newPath, sizeof(newPath));
 
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATH")) {
                 const char* dropped = static_cast<const char*>(payload->Data);
-                newPath = dropped;
+                std::strncpy(newPath, dropped, sizeof(newPath));
+                newPath[sizeof(newPath) - 1] = '\0';
             }
             ImGui::EndDragDropTarget();
         }
 
         if (ImGui::Button("Add State")) {
-            if (!newState.empty() && !newPath.empty()) {
+            if (newState[0] != '\0' && newPath[0] != '\0') {
                 character->stateImages[newState] = newPath;
-                newState.clear();
-                newPath.clear();
+                newState[0] = '\0';
+                newPath[0] = '\0';
             }
         }
     }
 
-    // --- Stats ---
+    // Stats
     if (ImGui::CollapsingHeader("Stats")) {
-        for (auto& [key, value] : character->stats) {
-            int v = value;
-            if (ImGui::DragInt(key.c_str(), &v)) {
-                character->stats[key] = v;
-            }
+        for (auto& kv : character->stats) {
+            const std::string& key = kv.first;
+            int& value = kv.second;
+            ImGui::DragInt(key.c_str(), &value);
         }
 
-        static std::string newStatKey;
+        static char newStatKey[64] = {0};
         static int newStatValue = 0;
 
-        ImGui::InputText("New Stat", &newStatKey);
+        ImGui::InputText("New Stat", newStatKey, sizeof(newStatKey));
         ImGui::DragInt("Value", &newStatValue);
         if (ImGui::Button("Add Stat")) {
-            if (!newStatKey.empty()) {
+            if (newStatKey[0] != '\0') {
                 character->stats[newStatKey] = newStatValue;
-                newStatKey.clear();
+                newStatKey[0] = '\0';
                 newStatValue = 0;
             }
         }

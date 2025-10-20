@@ -21,8 +21,8 @@ target_link_libraries(TRPGRuntime
 # --- Post-build steps ---
 add_custom_command(TARGET TRPGRuntime POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/assets
-            $<TARGET_FILE_DIR:TRPGRuntime>/assets
+            ${CMAKE_SOURCE_DIR}/Runtime
+            $<TARGET_FILE_DIR:TRPGRuntime>/Runtime
 
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${CMAKE_SOURCE_DIR}/packages/lua/lua54.dll

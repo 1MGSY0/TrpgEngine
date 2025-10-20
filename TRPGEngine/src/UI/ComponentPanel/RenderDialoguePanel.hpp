@@ -1,6 +1,9 @@
 #pragma once
 
+#include <imgui.h>
+#include <cstring>
 #include "UI/EditorUI.hpp"
+#include "Engine/EntitySystem/EntityManager.hpp"
 #include "Engine/EntitySystem/Components/DialogueComponent.hpp"
 
 inline void renderDialogueInspector(const std::shared_ptr<DialogueComponent>& comp) {
@@ -9,11 +12,13 @@ inline void renderDialogueInspector(const std::shared_ptr<DialogueComponent>& co
     // --- Dialogue Lines ---
     ImGui::Text("Dialogue Lines:");
     for (size_t i = 0; i < comp->lines.size(); ++i) {
+        ImGui::PushID(static_cast<int>(i));
         char buffer[256];
-        strncpy(buffer, comp->lines[i].c_str(), sizeof(buffer));
+        std::strncpy(buffer, comp->lines[i].c_str(), sizeof(buffer));
         buffer[255] = '\0';
-        if (ImGui::InputText(("Line " + std::to_string(i)).c_str(), buffer, sizeof(buffer)))
+        if (ImGui::InputText("Line", buffer, sizeof(buffer)))
             comp->lines[i] = buffer;
+        ImGui::PopID();
     }
 
     if (ImGui::Button("Add Line")) {
@@ -43,7 +48,7 @@ inline void renderDialogueInspector(const std::shared_ptr<DialogueComponent>& co
 
     ImGui::Separator();
 
-    // --- Target Flow Node ---
+    // --- Target Flow Node (by name) ---
     ImGui::Text("Target Flow Node:");
     if (!comp->targetFlowNode.empty()) {
         ImGui::Text("Next Node: %s", comp->targetFlowNode.c_str());

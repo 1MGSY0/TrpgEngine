@@ -4,6 +4,7 @@
 
 #include <Windows.h>
 #include <shellapi.h>
+#include <filesystem>
 
 #include "EditorUI.hpp"
 
@@ -14,7 +15,7 @@
 #include "Project/ProjectManager.hpp"
 #include "Project/BuildSystem.hpp"
 #include "Project/RuntimeLauncher.hpp"
-#include "ImGUIUtils/ImGuiUtils.hpp"
+#include "UI/ImGuiUtils/ImGuiUtils.hpp"
 
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
@@ -69,8 +70,28 @@ void EditorUI::init() {
     glfwSetWindowUserPointer(m_window, this);
     glfwSetDropCallback(m_window, EditorUI::glfwFileDropCallback);
 
+    // Robust font loading with fallback
     io.Fonts->Clear();
-    io.Fonts->AddFontFromFileTTF("Assets/fonts/InterVariable.ttf", 16.0f);
+    ImFont* font = nullptr;
+    const std::vector<std::string> fontCandidates = {
+        "Assets/fonts/InterVariable.ttf",
+        "Assets/Fonts/InterVariable.ttf",
+        "Runtime/Assets/fonts/InterVariable.ttf",
+        "Runtime/Assets/Fonts/InterVariable.ttf"
+    };
+    for (const auto& p : fontCandidates) {
+        if (std::filesystem::exists(p)) {
+            font = io.Fonts->AddFontFromFileTTF(p.c_str(), 16.0f);
+            if (font) {
+                std::cout << "[EditorUI] Loaded font: " << p << "\n";
+                break;
+            }
+        }
+    }
+    if (!font) {
+        font = io.Fonts->AddFontDefault();
+        std::cout << "[EditorUI] Using default ImGui font (custom font not found)\n";
+    }
     io.FontGlobalScale = 1.5f;
 
     std::cout << "[EditorUI] ImGui initialized. Custom dark theme applied.\n";
@@ -128,6 +149,38 @@ void EditorUI::render() {
     renderAssetBrowser();
     renderStatusBar();
 
+    // Handle OS file drops (projects vs. other files)
+    if (!s_pendingDroppedPaths.empty()) {
+        std::vector<std::string> dropped;
+        dropped.swap(s_pendingDroppedPaths);
+
+        size_t projCount = 0, otherCount = 0;
+        for (const auto& p : dropped) {
+            std::filesystem::path fp(p);
+            auto ext = fp.extension().string();
+            for (auto& ch : ext) ch = static_cast<char>(::tolower(static_cast<unsigned char>(ch)));
+
+            if (ext == ".trpgproj") {
+                ++projCount;
+                if (ResourceManager::get().hasUnsavedChanges()) {
+                    m_showUnsavedPrompt = true;
+                    m_actionAfterPrompt = false; // load after prompt
+                    ProjectManager::setTempLoadPath(p);
+                    ImGui::OpenPopup("Unsaved Changes");
+                } else {
+                    ProjectManager::loadProject(p);
+                }
+            } else {
+                ++otherCount;
+            }
+        }
+
+        if (otherCount > 0) {
+            setStatusMessage("Dropped " + std::to_string(otherCount) + " file(s). Use Project > Import to add assets.");
+            forceFolderRefresh();
+        }
+    }
+
     showUnsavedChangesPopup();
 }
 
@@ -167,9 +220,10 @@ void EditorUI::glfwFileDropCallback(GLFWwindow* window, int count, const char** 
     if (!editor) return;
 
     for (int i = 0; i < count; ++i) {
-        if (paths[i])
+        if (paths[i]) {
             s_pendingDroppedPaths.push_back(paths[i]);
             std::cout << "[EditorUI] File dropped: " << paths[i] << "\n";
+        }
     }
 }
 

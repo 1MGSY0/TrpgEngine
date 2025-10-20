@@ -13,7 +13,6 @@
 #include "Core/EngineManager.hpp"
 
 #include "UI/ScenePanel/ScenePanel.hpp"
-#include "UI/FlowPanel/Flowchart.hpp"
 
 #include "Engine/EntitySystem/Entity.hpp"
 #include "Engine/EntitySystem/EntityManager.hpp"
@@ -28,7 +27,7 @@
 #include "Project/ProjectManager.hpp"
 #include "Project/BuildSystem.hpp"
 
-#include "ImGUIUtils/ImGuiUtils.hpp"
+#include "UI/ImGuiUtils/ImGuiUtils.hpp"
 #include "Templates/EntityTemplates.hpp"
 
 class Application;
@@ -72,7 +71,6 @@ public:
 
 private:
     GLFWwindow* m_window;
-    Flowchart m_flowChart;
     ScenePanel scenePanel;
 
     Application* m_app = nullptr;

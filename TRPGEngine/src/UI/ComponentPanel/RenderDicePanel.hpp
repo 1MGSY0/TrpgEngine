@@ -1,5 +1,7 @@
 #pragma once
 
+#include <imgui.h>
+#include <cstring>
 #include "UI/EditorUI.hpp"
 #include "Engine/EntitySystem/Components/DiceRollComponent.hpp"
 
@@ -14,14 +16,14 @@ inline void renderDiceInspector(const std::shared_ptr<DiceRollComponent>& comp) 
 
     // Flow triggers
     char bufferSuccess[256];
-    strncpy(bufferSuccess, comp->onSuccess.c_str(), sizeof(bufferSuccess));
+    std::strncpy(bufferSuccess, comp->onSuccess.c_str(), sizeof(bufferSuccess));
     bufferSuccess[255] = '\0';
     if (ImGui::InputText("On Success Trigger", bufferSuccess, sizeof(bufferSuccess))) {
         comp->onSuccess = bufferSuccess;
     }
 
     char bufferFailure[256];
-    strncpy(bufferFailure, comp->onFailure.c_str(), sizeof(bufferFailure));
+    std::strncpy(bufferFailure, comp->onFailure.c_str(), sizeof(bufferFailure));
     bufferFailure[255] = '\0';
     if (ImGui::InputText("On Failure Trigger", bufferFailure, sizeof(bufferFailure))) {
         comp->onFailure = bufferFailure;
