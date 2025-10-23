@@ -1,8 +1,10 @@
 #pragma once
 
 #include <imgui.h>
+#include <cstring> // + strncpy
 #include "UI/EditorUI.hpp"
 #include "Engine/EntitySystem/Components/BackgroundComponent.hpp"
+#include "Resources/ResourceManager.hpp" // + mark unsaved
 
 inline void renderBackgroundInspector(const std::shared_ptr<BackgroundComponent>& comp) {
     char buffer[256];
@@ -11,6 +13,7 @@ inline void renderBackgroundInspector(const std::shared_ptr<BackgroundComponent>
 
     if (ImGui::InputText("Asset Path", buffer, sizeof(buffer))) {
         comp->assetPath = buffer;
+        ResourceManager::get().setUnsavedChanges(true);
     }
 
     // Support drag and drop from file browser
@@ -18,6 +21,7 @@ inline void renderBackgroundInspector(const std::shared_ptr<BackgroundComponent>
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATH")) {
             const char* droppedPath = static_cast<const char*>(payload->Data);
             comp->assetPath = droppedPath;
+            ResourceManager::get().setUnsavedChanges(true);
         }
         ImGui::EndDragDropTarget();
     }

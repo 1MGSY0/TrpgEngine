@@ -4,6 +4,7 @@
 #include <cstring>
 #include "UI/EditorUI.hpp"
 #include "Engine/EntitySystem/Components/CharacterComponent.hpp"
+#include "Resources/ResourceManager.hpp" // + mark unsaved
 
 inline void renderCharacterInspector(const std::shared_ptr<CharacterComponent>& character) {
     if (!character) {
@@ -18,6 +19,7 @@ inline void renderCharacterInspector(const std::shared_ptr<CharacterComponent>& 
         nameBuf[sizeof(nameBuf) - 1] = '\0';
         if (ImGui::InputText("Name", nameBuf, sizeof(nameBuf))) {
             character->name = nameBuf;
+            ResourceManager::get().setUnsavedChanges(true);
         }
     }
 
@@ -28,11 +30,13 @@ inline void renderCharacterInspector(const std::shared_ptr<CharacterComponent>& 
         iconBuf[sizeof(iconBuf) - 1] = '\0';
         if (ImGui::InputText("Icon Image", iconBuf, sizeof(iconBuf))) {
             character->iconImage = iconBuf;
+            ResourceManager::get().setUnsavedChanges(true);
         }
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATH")) {
                 const char* path = static_cast<const char*>(payload->Data);
                 character->iconImage = path;
+                ResourceManager::get().setUnsavedChanges(true);
             }
             ImGui::EndDragDropTarget();
         }
@@ -51,11 +55,13 @@ inline void renderCharacterInspector(const std::shared_ptr<CharacterComponent>& 
             pathBuf[sizeof(pathBuf) - 1] = '\0';
             if (ImGui::InputText("Path", pathBuf, sizeof(pathBuf))) {
                 path = pathBuf;
+                ResourceManager::get().setUnsavedChanges(true);
             }
             if (ImGui::BeginDragDropTarget()) {
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FILE_PATH")) {
                     const char* dropped = static_cast<const char*>(payload->Data);
                     path = dropped;
+                    ResourceManager::get().setUnsavedChanges(true);
                 }
                 ImGui::EndDragDropTarget();
             }
@@ -85,6 +91,7 @@ inline void renderCharacterInspector(const std::shared_ptr<CharacterComponent>& 
                 character->stateImages[newState] = newPath;
                 newState[0] = '\0';
                 newPath[0] = '\0';
+                ResourceManager::get().setUnsavedChanges(true);
             }
         }
     }
@@ -94,7 +101,9 @@ inline void renderCharacterInspector(const std::shared_ptr<CharacterComponent>& 
         for (auto& kv : character->stats) {
             const std::string& key = kv.first;
             int& value = kv.second;
-            ImGui::DragInt(key.c_str(), &value);
+            if (ImGui::DragInt(key.c_str(), &value)) {
+                ResourceManager::get().setUnsavedChanges(true);
+            }
         }
 
         static char newStatKey[64] = {0};
@@ -107,6 +116,7 @@ inline void renderCharacterInspector(const std::shared_ptr<CharacterComponent>& 
                 character->stats[newStatKey] = newStatValue;
                 newStatKey[0] = '\0';
                 newStatValue = 0;
+                ResourceManager::get().setUnsavedChanges(true);
             }
         }
     }

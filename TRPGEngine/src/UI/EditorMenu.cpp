@@ -1,6 +1,243 @@
 #include "EditorUI.hpp"
 #include <iostream>
 #include "UI/ImGuiUtils/ImGuiUtils.hpp"
+#include <filesystem>
+#include <fstream>
+#include "Engine/EntitySystem/EntityManager.hpp"
+#include "Engine/EntitySystem/Components/FlowNodeComponent.hpp"
+#include "Engine/EntitySystem/Components/DialogueComponent.hpp"
+#include "Engine/EntitySystem/Components/ChoiceComponent.hpp"
+#include "Engine/EntitySystem/Components/DiceRollComponent.hpp"
+#include "Engine/EntitySystem/Components/ProjectMetaComponent.hpp"
+#include "Project/ProjectManager.hpp"
+#include "UI/FlowPanel/EditorRunControls.hpp"
+#include <json.hpp>
+#include "Resources/ResourceManager.hpp"
+#include "Engine/EntitySystem/ComponentRegistry.hpp"
+#include "Engine/RenderSystem/SceneManager.hpp"
+#include <algorithm> // + remove/swap
+
+// Helpers for scene/event creation from the Edit menu
+namespace {
+    // Forward decl (used by getPreferredSceneNode)
+    Entity findOwnerScene(Entity evt);
+
+    // Return only the currently selected FlowNode (scene).
+    // If an event is selected, infer its owner scene.
+    // No fallback to startNode to force explicit user choice when ambiguous.
+    Entity getPreferredSceneNode() {
+        auto& em = EntityManager::get();
+        if (EditorUI* ui = EditorUI::get()) {
+            Entity sel = ui->getSelectedEntity();
+            if (em.hasComponent(sel, ComponentType::FlowNode))
+                return sel;
+            // If an event is selected, attach under its owning scene
+            if (em.getComponent<DialogueComponent>(sel) ||
+                em.getComponent<ChoiceComponent>(sel) ||
+                em.getComponent<DiceRollComponent>(sel)) {
+                Entity owner = findOwnerScene(sel);
+                if (owner != INVALID_ENTITY) return owner;
+            }
+        }
+        return INVALID_ENTITY;
+    }
+
+    Entity createSceneFlowNode() {
+        auto& em = EntityManager::get();
+
+        Entity metaEntity = ProjectManager::getProjectMetaEntity();
+        auto base = em.getComponent(metaEntity, ComponentType::ProjectMetadata);
+        if (!base) return INVALID_ENTITY;
+        auto meta = std::static_pointer_cast<ProjectMetaComponent>(base);
+
+        Entity e = em.createEntity(INVALID_ENTITY);
+        const auto* info = ComponentTypeRegistry::getInfo(ComponentType::FlowNode);
+        if (!info || !info->loader) return INVALID_ENTITY;
+
+        std::string defName = "Scene " + std::to_string(meta->sceneNodes.size() + 1);
+        nlohmann::json init = nlohmann::json::object();
+        init["name"] = defName;
+        init["isStart"] = false;
+        init["isEnd"] = false;
+        init["nextNode"] = -1;
+        init["characters"] = nlohmann::json::array();
+        init["backgrounds"] = nlohmann::json::array();
+        init["uiLayer"] = nlohmann::json::array();
+        init["objectLayer"] = nlohmann::json::array();
+        init["eventSequence"] = nlohmann::json::array();
+
+        auto comp = info->loader(init);
+        if (!comp || em.addComponent(e, comp) != EntityManager::AddComponentResult::Ok) return INVALID_ENTITY;
+        comp->Init(e);
+
+        if (auto fn = em.getComponent<FlowNodeComponent>(e)) {
+            if (fn->name.empty()) fn->name = defName;
+        }
+
+        meta->sceneNodes.push_back(e);
+
+        // If first scene, set as start
+        if (meta->startNode == INVALID_ENTITY) {
+            meta->startNode = e;
+            if (auto fn = em.getComponent<FlowNodeComponent>(e)) fn->isStart = true;
+        }
+
+        // Auto-link from currently selected scene if it has no next
+        if (EditorUI* ui = EditorUI::get()) {
+            Entity selected = ui->getSelectedEntity();
+            if (auto selFn = em.getComponent<FlowNodeComponent>(selected)) {
+                if (selFn->nextNode < 0) selFn->nextNode = static_cast<int>(e);
+            }
+            ui->setSelectedEntity(e);
+        }
+        SceneManager::get().setCurrentFlowNode(e);
+        ResourceManager::get().setUnsavedChanges(true);
+        return e;
+    }
+
+    Entity findOwnerScene(Entity evt) {
+        auto& em = EntityManager::get();
+        Entity metaEntity = ProjectManager::getProjectMetaEntity();
+        auto base = em.getComponent(metaEntity, ComponentType::ProjectMetadata);
+        if (!base) return INVALID_ENTITY;
+        auto meta = std::static_pointer_cast<ProjectMetaComponent>(base);
+        for (Entity n : meta->sceneNodes) {
+            auto fn = em.getComponent<FlowNodeComponent>(n);
+            if (!fn) continue;
+            for (Entity e : fn->eventSequence) if (e == evt) return n;
+        }
+        return INVALID_ENTITY;
+    }
+
+    bool attachEventToScene(Entity evt, Entity sceneNode) {
+        auto& em = EntityManager::get();
+        if (evt == INVALID_ENTITY || sceneNode == INVALID_ENTITY) return false;
+        Entity owner = findOwnerScene(evt);
+        if (owner != INVALID_ENTITY) {
+            if (auto ownFn = em.getComponent<FlowNodeComponent>(owner)) {
+                ownFn->eventSequence.erase(std::remove(ownFn->eventSequence.begin(), ownFn->eventSequence.end(), evt),
+                                           ownFn->eventSequence.end());
+            }
+        }
+        if (auto dst = em.getComponent<FlowNodeComponent>(sceneNode)) {
+            dst->eventSequence.push_back(evt);
+            ResourceManager::get().setUnsavedChanges(true);
+            return true;
+        }
+        return false;
+    }
+
+    Entity createEventAndAttach(ComponentType type, Entity sceneNode) {
+        auto& em = EntityManager::get();
+        const auto* info = ComponentTypeRegistry::getInfo(type);
+        if (!info || !info->loader) return INVALID_ENTITY;
+
+        nlohmann::json init = nlohmann::json::object();
+        if (type == ComponentType::Dialogue) {
+            init["lines"] = nlohmann::json::array();
+            init["speaker"] = -1;
+            init["advanceOnClick"] = true;
+            init["targetFlowNode"] = "";
+        } else if (type == ComponentType::Choice) {
+            init["options"] = nlohmann::json::array();
+        } else if (type == ComponentType::DiceRoll) {
+            init["sides"] = 6; init["threshold"] = 1; init["onSuccess"] = ""; init["onFailure"] = "";
+        }
+
+        Entity e = em.createEntity(INVALID_ENTITY);
+        auto c = info->loader(init);
+        if (!c || em.addComponent(e, c) != EntityManager::AddComponentResult::Ok) return INVALID_ENTITY;
+        c->Init(e);
+        attachEventToScene(e, sceneNode);
+        if (EditorUI* ui = EditorUI::get()) ui->setSelectedEntity(e);
+        ResourceManager::get().setUnsavedChanges(true);
+        return e;
+    }
+
+    // Popup state for choosing a scene when none is selected
+    static bool s_openChooseScenePopup = false;
+    static ComponentType s_pendingEventType = ComponentType::Unknown;
+} // anonymous namespace
+
+// Shared Play controls exposed from FlowPlayTester (C-linkage)
+extern "C" {
+    bool Editor_Run_IsPlaying();
+    void Editor_Run_Play();
+    void Editor_Run_Stop();
+    void Editor_Run_Restart();
+}
+
+// Helper: build runtime data.json reflecting scenes, event ownership and targets
+static nlohmann::json buildRuntimeDataJson() {
+    auto& em = EntityManager::get();
+    nlohmann::json root = nlohmann::json::object();
+    root["scenes"] = nlohmann::json::array();
+
+    Entity metaEntity = ProjectManager::getProjectMetaEntity();
+    auto base = em.getComponent(metaEntity, ComponentType::ProjectMetadata);
+    if (!base) return root;
+    auto meta = std::static_pointer_cast<ProjectMetaComponent>(base);
+
+    for (Entity nodeId : meta->sceneNodes) {
+        auto fn = em.getComponent<FlowNodeComponent>(nodeId);
+        if (!fn) continue;
+
+        nlohmann::json scene = nlohmann::json::object();
+        scene["id"] = static_cast<uint64_t>(nodeId);
+        scene["name"] = fn->name;
+        scene["isStart"] = (meta->startNode == nodeId);
+        scene["isEnd"] = fn->isEnd;
+        scene["nextNode"] = fn->nextNode; // -1 or entity id cast int
+
+        // layers/refs
+        auto toArray = [](const std::vector<Entity>& arr) {
+            nlohmann::json out = nlohmann::json::array();
+            for (Entity e : arr) out.push_back(static_cast<uint64_t>(e));
+            return out;
+        };
+        scene["characters"] = toArray(fn->characters);
+        scene["backgrounds"] = toArray(fn->backgroundEntities);
+        scene["uiLayer"] = toArray(fn->uiLayer);
+        scene["objectLayer"] = toArray(fn->objectLayer);
+
+        // events with ownership and targets
+        nlohmann::json events = nlohmann::json::array();
+        for (Entity evt : fn->eventSequence) {
+            if (evt == INVALID_ENTITY) continue;
+            nlohmann::json ev = nlohmann::json::object();
+            ev["id"] = static_cast<uint64_t>(evt);
+            if (auto d = em.getComponent<DialogueComponent>(evt)) {
+                ev["type"] = "Dialogue";
+                ev["lines"] = d->lines;
+                ev["speaker"] = static_cast<int64_t>(d->speaker);
+                ev["advanceOnClick"] = d->advanceOnClick;
+                ev["target"] = d->targetFlowNode; // scene name or @Event:id
+            } else if (auto c = em.getComponent<ChoiceComponent>(evt)) {
+                ev["type"] = "Choice";
+                nlohmann::json opts = nlohmann::json::array();
+                for (auto& o : c->options) {
+                    // Persist full text including " -> target" (editor format)
+                    opts.push_back(o.text);
+                }
+                ev["options"] = opts;
+            } else if (auto r = em.getComponent<DiceRollComponent>(evt)) {
+                ev["type"] = "DiceRoll";
+                ev["sides"] = r->sides;
+                ev["threshold"] = r->threshold;
+                ev["onSuccess"] = r->onSuccess; // scene name or @Event:id
+                ev["onFailure"] = r->onFailure; // scene name or @Event:id
+            } else {
+                ev["type"] = "Unknown";
+            }
+            events.push_back(ev);
+        }
+        scene["events"] = events;
+
+        root["scenes"].push_back(scene);
+    }
+
+    return root;
+}
 
 using json = nlohmann::json;
 
@@ -111,6 +348,19 @@ void EditorUI::renderMenuBar() {
                         }
                     }
                 }
+                // + Export runtime data.json (scenes, events, targets)
+                if (ImGui::MenuItem("Export Runtime Data (data.json)")) {
+                    try {
+                        std::filesystem::create_directories("Runtime");
+                        json j = buildRuntimeDataJson();
+                        std::ofstream ofs("Runtime/data.json", std::ios::binary | std::ios::trunc);
+                        ofs << j.dump(2);
+                        ofs.close();
+                        setStatusMessage("Exported Runtime/data.json");
+                    } catch (const std::exception& ex) {
+                        setStatusMessage(std::string("Export failed: ") + ex.what());
+                    }
+                }
                 ImGui::EndMenu(); // Export
             }
 
@@ -119,47 +369,49 @@ void EditorUI::renderMenuBar() {
 
         // ---------------- EDIT MENU ----------------
         if (ImGui::BeginMenu("Edit")) {
+            if (ImGui::MenuItem("Add Scene")) {
+                Entity newScene = createSceneFlowNode();
+                setStatusMessage(newScene != INVALID_ENTITY ? "Created new scene." : "Failed to create scene.");
+            }
+
+            if (ImGui::BeginMenu("Add Event")) {
+                // Try to resolve current scene
+                Entity targetNode = getPreferredSceneNode();
+                const bool canAddDirect = (targetNode != INVALID_ENTITY);
+                if (!canAddDirect) {
+                    ImGui::TextDisabled("Select a FlowNode in Hierarchy. If none, a popup will appear.");
+                }
+
+                // Helper to handle click for a type
+                auto handleAddEvent = [&](ComponentType type) {
+                    if (canAddDirect) {
+                        Entity e = createEventAndAttach(type, targetNode);
+                        setStatusMessage(e != INVALID_ENTITY ? "Added event to scene." : "Failed to add event.");
+                    } else {
+                        s_pendingEventType = type;
+                        s_openChooseScenePopup = true; // Open after menu bar
+                    }
+                };
+
+                if (ImGui::MenuItem("Add Dialogue", nullptr, false)) {
+                    handleAddEvent(ComponentType::Dialogue);
+                }
+                if (ImGui::MenuItem("Add Choice", nullptr, false)) {
+                    handleAddEvent(ComponentType::Choice);
+                }
+                if (ImGui::MenuItem("Add Dice Roll", nullptr, false)) {
+                    handleAddEvent(ComponentType::DiceRoll);
+                }
+
+                ImGui::EndMenu();
+            }
+
             if (ImGui::MenuItem("Rename Selected File")) {
                 showRenamePopup = true;
                 strcpy(newName, m_selectedAssetName.c_str());
                 ImGui::OpenPopup("RenameAssetPopup");
             }
             ImGui::EndMenu();
-        }
-
-        // ---------------- ENTITY MENU ----------------
-        if (ImGui::BeginMenu("Entities")) {
-            if (ImGui::MenuItem("New Entity...")) {
-                showNewEntityPopup = true;
-                ImGui::OpenPopup("NewEntityPopup");
-            }
-
-            if (ImGui::BeginMenu("Add Component to Selected")) {
-                Entity selected = getSelectedEntity();
-                if (selected != INVALID_ENTITY) {
-                    for (const auto& [type, info] : ComponentTypeRegistry::getAllInfos()) {
-                        if (ImGui::MenuItem(info.key.c_str())) {
-                            auto component = info.loader(nlohmann::json{}); 
-                            EntityManager::get().addComponent(selected, component);
-                            setStatusMessage("Added component: " + info.key);
-                        }
-                    }
-                } else {
-                    ImGui::TextDisabled("No entity selected");
-                }
-                ImGui::EndMenu(); // Add Component
-            }
-
-            if (ImGui::MenuItem("Save Selected Entity as .entity")) {
-                Entity selected = getSelectedEntity();
-                if (selected != INVALID_ENTITY) {
-                    json j = EntityManager::get().serializeEntity(selected);
-                    ResourceManager::get().saveAssetFile(j, "entity_" + std::to_string(selected), ".entity");
-                    setStatusMessage("Saved selected entity.");
-                }
-            }
-
-            ImGui::EndMenu(); // Entities
         }
 
         // ---------------- SELECT MENU ----------------
@@ -179,9 +431,17 @@ void EditorUI::renderMenuBar() {
         }
 
         // ---------------- RUN MENU ----------------
+        // Keep using shared Play controls
         if (ImGui::BeginMenu("Run")) {
-            if (ImGui::MenuItem("Play", nullptr, m_app->isPlaying())) {
-                m_app->togglePlayMode();
+            bool playing = Editor_Run_IsPlaying();
+            if (ImGui::MenuItem("Play", nullptr, false, !playing)) {
+                Editor_Run_Play();
+            }
+            if (ImGui::MenuItem("Stop", nullptr, false, playing)) {
+                Editor_Run_Stop();
+            }
+            if (ImGui::MenuItem("Restart", nullptr, false, playing)) {
+                Editor_Run_Restart();
             }
             ImGui::EndMenu();
         }
@@ -191,22 +451,56 @@ void EditorUI::renderMenuBar() {
 
     // ---------------- POPUPS ----------------
 
+    // Open choose scene popup if requested from menu
+    if (s_openChooseScenePopup) {
+        ImGui::OpenPopup("Choose Scene for New Event");
+        s_openChooseScenePopup = false;
+    }
+
+    if (ImGui::BeginPopupModal("Choose Scene for New Event", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        auto& em = EntityManager::get();
+        Entity metaEntity = ProjectManager::getProjectMetaEntity();
+        auto base = em.getComponent(metaEntity, ComponentType::ProjectMetadata);
+
+        ImGui::Text("Select a scene to attach the new event:");
+        ImGui::Separator();
+
+        if (!base) {
+            ImGui::TextDisabled("No ProjectMeta found.");
+        } else {
+            auto meta = std::static_pointer_cast<ProjectMetaComponent>(base);
+            // List scenes as buttons
+            for (Entity nodeId : meta->sceneNodes) {
+                auto fn = em.getComponent<FlowNodeComponent>(nodeId);
+                std::string label = fn ? fn->name : std::string("[Missing] ") + std::to_string((unsigned)nodeId);
+                label += "##scene_pick_" + std::to_string((unsigned)nodeId);
+                if (ImGui::Button(label.c_str())) {
+                    Entity e = createEventAndAttach(s_pendingEventType, nodeId);
+                    setStatusMessage(e != INVALID_ENTITY ? "Added event to selected scene." : "Failed to add event.");
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+        }
+
+        ImGui::Separator();
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
 
     if (showRenamePopup) {
         ImGui::OpenPopup("RenameAssetPopup");
-        showRenamePopup = false; // Reset immediately after opening
+        showRenamePopup = false;
     }
 
-    // Same for new entity popup
     if (showNewEntityPopup) {
         ImGui::OpenPopup("NewEntityPopup");
         showNewEntityPopup = false;
     }
 
-    // (PROJECT INFO)
     if (ProjectManager::consumeProjectInfoPrompt()) {
-        std::cout << "[EditorUI] consumeProjectInfoPrompt() = true, will OpenPopup(ProjectMetaPopup)\n";
-        openProjectInfoPopupOnce(); // flips showProjectMetaPopup
+        openProjectInfoPopupOnce();
     }
 
     if (showProjectMetaPopup) {
@@ -444,7 +738,7 @@ void EditorUI::renderNewEntityPopup() {
                     size_t added = 0;
                     for (const auto& make : it->second.factories) {
                         if (!make) { std::cout << "[ERROR] Null factory in template!\n"; continue; }
-                        auto comp = make();                                   // ← fresh instance
+                        auto comp = make(); // fresh instance
                         if (!comp) { std::cout << "[ERROR] Factory returned null!\n"; continue; }
                         EntityManager::get().addComponent(e, comp);
                         ++added;

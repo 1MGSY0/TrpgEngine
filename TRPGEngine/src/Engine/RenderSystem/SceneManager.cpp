@@ -44,9 +44,11 @@ void SceneManager::updateVisibleEntities() {
     for (auto e : m_objectLayer)
         m_visibleEntities.insert(e);
 
-    if (GameInstance::get().isRunning()) {
+    // Treat editor preview as "running" when FlowExecutor has an active node
+    const bool previewRunning = (FlowExecutor::get().currentFlowNode() != INVALID_ENTITY);
+    if (GameInstance::get().isRunning() || previewRunning) {
         int idx = FlowExecutor::get().currentEventIndex();
-        if (idx < node->eventSequence.size()) {
+        if (idx < (int)node->eventSequence.size()) {
             m_eventEntity = node->eventSequence[idx];
             m_visibleEntities.insert(m_eventEntity);
         }
@@ -73,12 +75,14 @@ Entity SceneManager::getCurrentEventEntity() const {
 }
 
 void SceneManager::renderEditorScene() {
+    updateVisibleEntities(); // ensure latest visibility while previewing
     for (Entity e : getVisibleEntities()) {
         RenderSystem::renderEntityEditor(e);
     }
 }
 
 void SceneManager::renderRuntimeScene() {
+    updateVisibleEntities(); // ensure latest visibility while playing
     for (Entity e : getObjectLayer()) {
         RenderSystem::renderEntityRuntime(e); // render 3D layer behind
     }

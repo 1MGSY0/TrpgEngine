@@ -1,8 +1,11 @@
 #pragma once
-
 #include <imgui.h>
 #include <cstring>
 #include <string>
+#include <vector>
+#include <algorithm>
+#include <json.hpp>
+#include <unordered_set>
 #include "UI/EditorUI.hpp"
 #include "Engine/EntitySystem/Entity.hpp"
 #include "Engine/EntitySystem/EntityManager.hpp"
@@ -16,6 +19,7 @@
 #include "Engine/EntitySystem/Components/ProjectMetaComponent.hpp"
 #include "Project/ProjectManager.hpp"
 #include "Resources/ResourceManager.hpp"
+#include "Engine/EntitySystem/ComponentRegistry.hpp"
 
 inline void renderFlowNodeInspector(const std::shared_ptr<FlowNodeComponent>& comp) {
     auto& em = EntityManager::get();
@@ -27,8 +31,10 @@ inline void renderFlowNodeInspector(const std::shared_ptr<FlowNodeComponent>& co
     char nameBuffer[128];
     std::strncpy(nameBuffer, comp->name.c_str(), sizeof(nameBuffer));
     nameBuffer[sizeof(nameBuffer) - 1] = '\0';
-    if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer)))
+    if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer))) {
         comp->name = nameBuffer;
+        ResourceManager::get().setUnsavedChanges(true);
+    }
 
     // Sync start flag with ProjectMeta using the inspected entity (self)
     {
@@ -67,7 +73,9 @@ inline void renderFlowNodeInspector(const std::shared_ptr<FlowNodeComponent>& co
     }
 
     ImGui::SameLine();
-    ImGui::Checkbox("End Node", &comp->isEnd);
+    if (ImGui::Checkbox("End Node", &comp->isEnd)) {
+        ResourceManager::get().setUnsavedChanges(true);
+    }
 
     // Next node picker (links in the flow graph)
     {
@@ -75,31 +83,37 @@ inline void renderFlowNodeInspector(const std::shared_ptr<FlowNodeComponent>& co
         auto base = em.getComponent(metaEntity, ComponentType::ProjectMetadata);
         if (base) {
             auto meta = std::static_pointer_cast<ProjectMetaComponent>(base);
-            // Build list of candidates
+
+            // Build list of candidates (Entity-as-int) and labels
             std::vector<std::pair<int, std::string>> options;
             options.emplace_back(-1, std::string("<None>"));
             for (Entity e : meta->sceneNodes) {
                 auto f = em.getComponent<FlowNodeComponent>(e);
-                std::string label = f ? f->name : std::string("[Missing] ") + std::to_string(e);
+                std::string label = f ? f->name : std::string("[Missing] ") + std::to_string((unsigned)e);
                 options.emplace_back(static_cast<int>(e), label);
             }
-            // Find current index
-            int currentIdx = 0;
-            for (int i = 0; i < (int)options.size(); ++i) {
-                if (options[i].first == comp->nextNode) { currentIdx = i; break; }
-            }
-            // Build c-strings
-            static std::vector<std::string> cache;
-            static std::vector<const char*> items;
-            cache.clear(); items.clear();
-            for (auto& p : options) cache.push_back(p.second);
-            for (auto& s : cache) items.push_back(s.c_str());
 
-            if (ImGui::Combo("Next Node", &currentIdx, items.data(), (int)items.size())) {
-                comp->nextNode = options[currentIdx].first;
-                ResourceManager::get().setUnsavedChanges(true);
+            // Current preview label
+            int current = comp->nextNode;
+            std::string preview = "<None>";
+            for (const auto& p : options) {
+                if (p.first == current) { preview = p.second; break; }
+            }
+
+            if (ImGui::BeginCombo("Next Node", preview.c_str())) {
+                for (const auto& p : options) {
+                    bool selected = (p.first == current);
+                    if (ImGui::Selectable(p.second.c_str(), selected)) {
+                        comp->nextNode = p.first;
+                        ResourceManager::get().setUnsavedChanges(true);
+                        current = p.first;
+                    }
+                    if (selected) ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
             }
         } else {
+            // Fallback: simple int input (rare; ProjectMeta missing)
             ImGui::InputInt("Next Auto Node", reinterpret_cast<int*>(&comp->nextNode));
         }
     }
@@ -204,61 +218,39 @@ inline void renderFlowNodeInspector(const std::shared_ptr<FlowNodeComponent>& co
         ImGui::EndDragDropTarget();
     }
 
-    // Event Sequence
+    // Helper: locate owner scene and move events uniquely between scenes
+    auto findOwnerScene = [&](Entity evt)->Entity {
+        Entity metaEntity = ProjectManager::getProjectMetaEntity();
+        auto base = em.getComponent(metaEntity, ComponentType::ProjectMetadata);
+        if (!base) return INVALID_ENTITY;
+        auto meta = std::static_pointer_cast<ProjectMetaComponent>(base);
+        for (Entity nodeId : meta->sceneNodes) {
+            auto fn = em.getComponent<FlowNodeComponent>(nodeId);
+            if (!fn) continue;
+            for (Entity e : fn->eventSequence) if (e == evt) return nodeId;
+        }
+        return INVALID_ENTITY;
+    };
+    auto moveEventTo = [&](Entity evt, Entity toNode)->bool {
+        if (evt == INVALID_ENTITY || toNode == INVALID_ENTITY) return false;
+        Entity owner = findOwnerScene(evt);
+        if (owner == toNode) return true;
+        if (owner != INVALID_ENTITY) {
+            if (auto ownFn = em.getComponent<FlowNodeComponent>(owner)) {
+                ownFn->eventSequence.erase(std::remove(ownFn->eventSequence.begin(), ownFn->eventSequence.end(), evt), ownFn->eventSequence.end());
+            }
+        }
+        if (auto dst = em.getComponent<FlowNodeComponent>(toNode)) {
+            dst->eventSequence.push_back(evt);
+            ResourceManager::get().setUnsavedChanges(true);
+            return true;
+        }
+        return false;
+    };
+
+    // REMOVE: Event Flow editor was here. Shifted to Flow -> Events tab.
     ImGui::Separator();
-    ImGui::Text("Event Flow (Ordered):");
+    ImGui::TextDisabled("Manage event order and results in Flow -> Events tab.");
 
-    static int dragSrcIndex = -1;
-    for (int i = 0; i < comp->eventSequence.size(); ++i) {
-        Entity eventId = comp->eventSequence[i];
-        ImGui::PushID(i);
-
-        std::string evLabel = std::string("Event ") + std::to_string(i) + " [ID " + std::to_string(eventId) + "]";
-        if (ImGui::Selectable(evLabel.c_str()))
-            EditorUI::get()->setSelectedEntity(eventId);
-
-        if (ImGui::BeginDragDropSource()) {
-            dragSrcIndex = i;
-            ImGui::Text("Moving Event %d", i);
-            ImGui::SetDragDropPayload("EVENT_REORDER", &i, sizeof(int));
-            ImGui::EndDragDropSource();
-        }
-
-        if (ImGui::BeginDragDropTarget()) {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("EVENT_REORDER")) {
-                int src = *(const int*)payload->Data;
-                if (src != i && src >= 0 && src < comp->eventSequence.size()) {
-                    std::swap(comp->eventSequence[src], comp->eventSequence[i]);
-                }
-            }
-            ImGui::EndDragDropTarget();
-        }
-
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Remove")) {
-            comp->eventSequence.erase(comp->eventSequence.begin() + i);
-            i--;
-        }
-
-        ImGui::PopID();
-    }
-
-    ImGui::TextDisabled("Drop event entities (Dialogue, Choice, DiceRoll, UIButton) here.");
-    if (ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_FILE")) {
-            Entity dropped = *(Entity*)payload->Data;
-            if (
-                em.getComponent<DialogueComponent>(dropped) ||
-                em.getComponent<ChoiceComponent>(dropped) ||
-                em.getComponent<DiceRollComponent>(dropped) ||
-                em.getComponent<UIButtonComponent>(dropped)
-            ) {
-                comp->eventSequence.push_back(dropped);
-            }
-        }
-        ImGui::EndDragDropTarget();
-    }
-
-    if (ImGui::Button("Add Empty Event Slot"))
-        comp->eventSequence.push_back(INVALID_ENTITY);
+    // Removed the large Event Flow list, quick result editors, and aggregated links summary.
 }

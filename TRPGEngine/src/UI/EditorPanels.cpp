@@ -4,12 +4,15 @@
 #include "EditorUI.hpp"
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <vector>
 #include <algorithm> 
 #include <iostream>
 #include <filesystem>
-#include <json.hpp> // for nlohmann::json
-#include <unordered_map> // + flowchart layout
+#include <fstream>
+#include <random>
+#include <json.hpp>
+#include <unordered_map>
 
 #include "UI/ImGuiUtils/ImGuiUtils.hpp"
 #include "Resources/ResourceManager.hpp"
@@ -18,9 +21,15 @@
 #include "Engine/EntitySystem/Entity.hpp"
 #include "Engine/EntitySystem/Components/ProjectMetaComponent.hpp"
 #include "Engine/EntitySystem/Components/FlowNodeComponent.hpp"
-#include "Project/ProjectManager.hpp"  // + ensure meta access
-
+#include "Project/ProjectManager.hpp"
 #include "Engine/RenderSystem/SceneManager.hpp"
+// + Show event types in Hierarchy
+#include "Engine/EntitySystem/Components/DialogueComponent.hpp"
+#include "Engine/EntitySystem/Components/ChoiceComponent.hpp"
+#include "Engine/EntitySystem/Components/DiceRollComponent.hpp"
+
+#include "UI/FlowPanel/FlowCanvas.hpp"
+#include "UI/FlowPanel/FlowEventsPanel.hpp"
 
 void EditorUI::renderFlowTabs() {
     static std::string saveStatus;
@@ -30,145 +39,13 @@ void EditorUI::renderFlowTabs() {
     ImGui::Begin("Flow Panel", nullptr, flags);
     if (ImGui::BeginTabBar("FlowTabs")) {
         if (ImGui::BeginTabItem("Flow")) {
-            // Minimal built-in canvas with drag-to-connect behavior
-            auto& em = EntityManager::get();
-            Entity metaEntity = ProjectManager::getProjectMetaEntity();
-            auto base = em.getComponent(metaEntity, ComponentType::ProjectMetadata);
-            if (base) {
-                auto meta = std::static_pointer_cast<ProjectMetaComponent>(base);
-
-                ImGui::Separator();
-                ImGui::TextDisabled("Flowchart (MVP): drag nodes; drag from port to connect; right-click to clear link");
-                ImGui::BeginChild("FlowchartCanvas", ImVec2(0, 0), true, ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar);
-                ImDrawList* draw = ImGui::GetWindowDrawList();
-                ImVec2 origin = ImGui::GetCursorScreenPos();
-                ImVec2 canvasSize = ImGui::GetContentRegionAvail();
-
-                // State
-                static std::unordered_map<Entity, ImVec2> s_nodePos;
-                static Entity s_draggingNode = INVALID_ENTITY;
-                static ImVec2 s_dragOffset = ImVec2(0, 0);
-                static Entity s_linkFrom = INVALID_ENTITY;
-
-                // Defaults for new nodes
-                auto ensurePos = [&](Entity e, int idx) {
-                    if (s_nodePos.find(e) == s_nodePos.end()) {
-                        float x = 40.0f + (idx % 5) * 200.0f;
-                        float y = 40.0f + (idx / 5) * 140.0f;
-                        s_nodePos[e] = ImVec2(x, y);
-                    }
-                };
-
-                // Draw links first (under nodes)
-                for (size_t i = 0; i < meta->sceneNodes.size(); ++i) {
-                    Entity nodeId = meta->sceneNodes[i];
-                    ensurePos(nodeId, (int)i);
-                    auto fn = em.getComponent<FlowNodeComponent>(nodeId);
-                    if (!fn) continue;
-
-                    if (fn->nextNode >= 0) {
-                        Entity to = (Entity)fn->nextNode;
-                        if (s_nodePos.find(to) == s_nodePos.end()) continue;
-                        ImVec2 fromPos = origin + s_nodePos[nodeId] + ImVec2(160, 30);
-                        ImVec2 toPos = origin + s_nodePos[to] + ImVec2(0, 30);
-                        ImU32 col = IM_COL32(140, 200, 255, 255);
-                        draw->AddBezierCubic(fromPos, fromPos + ImVec2(50, 0), toPos - ImVec2(50, 0), toPos, col, 2.0f);
-                    }
-                }
-
-                // Node rendering and interaction
-                Entity hoveredNode = INVALID_ENTITY;
-                for (size_t i = 0; i < meta->sceneNodes.size(); ++i) {
-                    Entity nodeId = meta->sceneNodes[i];
-                    ensurePos(nodeId, (int)i);
-                    auto fn = em.getComponent<FlowNodeComponent>(nodeId);
-                    std::string title = fn ? fn->name : ("[Missing] " + std::to_string(nodeId));
-
-                    ImVec2 npos = origin + s_nodePos[nodeId];
-                    ImVec2 size(160, 60);
-                    ImVec2 min = npos;
-                    ImVec2 max = npos + size;
-
-                    bool isStart = (meta->startNode == nodeId);
-                    ImU32 bgCol = isStart ? IM_COL32(60, 140, 80, 255) : IM_COL32(50, 50, 60, 255);
-                    ImU32 borderCol = IM_COL32(90, 90, 110, 255);
-                    draw->AddRectFilled(min, max, bgCol, 6.0f);
-                    draw->AddRect(min, max, borderCol, 6.0f);
-
-                    // Title
-                    draw->AddText(min + ImVec2(8, 8), IM_COL32_WHITE, title.c_str());
-
-                    // Input/Output ports
-                    ImVec2 inPort = min + ImVec2(-6, 30);
-                    ImVec2 outPort = max + ImVec2(6, -30);
-                    draw->AddCircleFilled(inPort, 6.0f, IM_COL32(200, 200, 200, 255));
-                    draw->AddCircleFilled(outPort, 6.0f, IM_COL32(200, 200, 200, 255));
-
-                    // Hover detection and select
-                    bool hovered = ImGui::IsMouseHoveringRect(min, max);
-                    if (hovered) hoveredNode = nodeId;
-
-                    // Drag node (LMB on node body)
-                    if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                        s_draggingNode = nodeId;
-                        s_dragOffset = ImGui::GetMousePos() - npos;
-                        setSelectedEntity(nodeId);
-                        SceneManager::get().setCurrentFlowNode(nodeId);
-                    }
-                    if (s_draggingNode == nodeId && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-                        s_nodePos[nodeId] = ImGui::GetMousePos() - origin - s_dragOffset;
-                    }
-                    if (s_draggingNode == nodeId && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-                        s_draggingNode = INVALID_ENTITY;
-                    }
-
-                    // Start linking when clicking output port
-                    if (ImGui::IsMouseHoveringRect(outPort - ImVec2(8, 8), outPort + ImVec2(8, 8))) {
-                        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                            s_linkFrom = nodeId;
-                        }
-                    }
-                    // Clear link on right-click output port
-                    if (ImGui::IsMouseHoveringRect(outPort - ImVec2(8, 8), outPort + ImVec2(8, 8))) {
-                        if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-                            if (auto src = em.getComponent<FlowNodeComponent>(nodeId)) {
-                                src->nextNode = -1;
-                                ResourceManager::get().setUnsavedChanges(true);
-                            }
-                        }
-                    }
-
-                    // Draw live linking line
-                    if (s_linkFrom != INVALID_ENTITY) {
-                        ImVec2 fromPos = origin + s_nodePos[s_linkFrom] + ImVec2(160, 30);
-                        ImVec2 mousePos = ImGui::GetMousePos();
-                        draw->AddBezierCubic(fromPos, fromPos + ImVec2(50, 0), mousePos - ImVec2(50, 0), mousePos, IM_COL32(255, 255, 100, 255), 2.0f);
-                    }
-
-                    // Accept link drop on input port
-                    if (ImGui::IsMouseHoveringRect(inPort - ImVec2(8, 8), inPort + ImVec2(8, 8))) {
-                        if (s_linkFrom != INVALID_ENTITY && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-                            if (auto src = em.getComponent<FlowNodeComponent>(s_linkFrom)) {
-                                src->nextNode = (int)nodeId;
-                                ResourceManager::get().setUnsavedChanges(true);
-                            }
-                            s_linkFrom = INVALID_ENTITY;
-                        }
-                    }
-                }
-
-                // Cancel linking if released elsewhere
-                if (s_linkFrom != INVALID_ENTITY && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-                    s_linkFrom = INVALID_ENTITY;
-                }
-
-                ImGui::EndChild();
-            }
-
+            // Flowchart Canvas (drag/connect/persist)
+            FlowCanvas::Render();
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Events")) {
-            ImGui::Text("Event list...");
+            // Scene events manager (list/reorder/add/remove/validate)
+            FlowEventsPanel::Render();
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Hierarchy")) {
@@ -180,64 +57,7 @@ void EditorUI::renderFlowTabs() {
             } else {
                 auto meta = std::static_pointer_cast<ProjectMetaComponent>(base);
 
-                if (ImGui::Button("New Scene")) {
-                    Entity e = em.createEntity(INVALID_ENTITY);
-
-                    const auto* info = ComponentTypeRegistry::getInfo(ComponentType::FlowNode);
-                    if (info && info->loader) {
-                        std::string defName = "Scene " + std::to_string(meta->sceneNodes.size() + 1);
-                        nlohmann::json init = nlohmann::json::object();
-                        init["name"] = defName;
-                        init["isStart"] = false;
-                        init["isEnd"] = false;
-                        init["nextNode"] = -1;
-                        init["characters"] = nlohmann::json::array();
-                        init["backgrounds"] = nlohmann::json::array();
-                        init["uiLayer"] = nlohmann::json::array();
-                        init["objectLayer"] = nlohmann::json::array();
-                        init["eventSequence"] = nlohmann::json::array();
-
-                        auto comp = info->loader(init);
-                        if (comp && em.addComponent(e, comp) == EntityManager::AddComponentResult::Ok) {
-                            comp->Init(e);
-
-                            auto fn = em.getComponent<FlowNodeComponent>(e);
-                            if (fn) {
-                                if (fn->name.empty()) fn->name = defName;
-                            }
-
-                            meta->sceneNodes.push_back(e);
-
-                            // If first scene, set as start in both meta and component
-                            if (meta->startNode == INVALID_ENTITY) {
-                                meta->startNode = e;
-                                if (fn) fn->isStart = true;
-                            }
-
-                            // If some node is selected and has no next, auto-link it to this new node
-                            Entity selected = getSelectedEntity();
-                            if (selected != INVALID_ENTITY) {
-                                if (auto selFn = em.getComponent<FlowNodeComponent>(selected)) {
-                                    if (selFn->nextNode < 0) {
-                                        selFn->nextNode = static_cast<int>(e);
-                                    }
-                                }
-                            }
-
-                            setSelectedEntity(e);
-                            SceneManager::get().setCurrentFlowNode(e);
-                            ResourceManager::get().setUnsavedChanges(true);
-
-                            setStatusMessage("Created new scene: " + defName);
-                        } else {
-                            setStatusMessage("Failed to add FlowNode component.");
-                        }
-                    } else {
-                        setStatusMessage("FlowNode factory not found.");
-                    }
-                }
-
-                ImGui::SameLine();
+                // Removed "New Scene" button; use Edit -> Add Scene from menu instead.
                 ImGui::TextDisabled("Right-click item to Set Start / Rename");
 
                 ImGui::Separator();
@@ -264,16 +84,20 @@ void EditorUI::renderFlowTabs() {
                     }
 
                     bool isStart = (nodeId == meta->startNode);
-                    bool isSelected = (currentSelected == nodeId);
+                    bool isSceneSelected = (currentSelected == nodeId);
 
-                    std::string label = name + " (ID: " + std::to_string(nodeId) + ")";
-                    if (isStart) label += " [Start]";
+                    std::string header = name + " (ID: " + std::to_string(nodeId) + ")";
+                    if (isStart) header += " [Start]";
 
-                    if (ImGui::Selectable(label.c_str(), isSelected)) {
+                    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth;
+                    if (isSceneSelected) flags |= ImGuiTreeNodeFlags_Selected;
+
+                    bool open = ImGui::TreeNodeEx((void*)(intptr_t)nodeId, flags, "%s", header.c_str());
+                    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
                         setSelectedEntity(nodeId);
                     }
 
-                    // Context menu per item
+                    // Context menu per scene
                     if (ImGui::BeginPopupContextItem((std::string("ctx##") + std::to_string(nodeId)).c_str())) {
                         if (!isStart && ImGui::MenuItem("Set as Start")) {
                             // Unset previous start flag
@@ -291,7 +115,6 @@ void EditorUI::renderFlowTabs() {
                         }
                         if (ImGui::MenuItem("Rename")) {
                             renameId = nodeId;
-                            // Preload current name
                             if (auto flow = em.getComponent<FlowNodeComponent>(nodeId)) {
                                 std::strncpy(renameBuf, flow->name.c_str(), sizeof(renameBuf));
                                 renameBuf[sizeof(renameBuf) - 1] = '\0';
@@ -301,7 +124,61 @@ void EditorUI::renderFlowTabs() {
                             openRename = true;
                             ImGui::CloseCurrentPopup();
                         }
+                        if (ImGui::MenuItem("Delete")) {
+                            // Unlink references from other nodes (clear nextNode pointing to this)
+                            for (Entity other : meta->sceneNodes) {
+                                if (auto otherFn = em.getComponent<FlowNodeComponent>(other)) {
+                                    if (otherFn->nextNode == static_cast<int>(nodeId)) {
+                                        otherFn->nextNode = -1;
+                                    }
+                                }
+                            }
+                            bool wasStart = (meta->startNode == nodeId);
+                            // Remove from sceneNodes
+                            meta->sceneNodes.erase(std::remove(meta->sceneNodes.begin(), meta->sceneNodes.end(), nodeId),
+                                                   meta->sceneNodes.end());
+                            if (wasStart) {
+                                meta->startNode = meta->sceneNodes.empty() ? INVALID_ENTITY : meta->sceneNodes.front();
+                                if (meta->startNode != INVALID_ENTITY) {
+                                    if (auto newStart = em.getComponent<FlowNodeComponent>(meta->startNode)) {
+                                        newStart->isStart = true;
+                                    }
+                                }
+                            }
+                            if (getSelectedEntity() == nodeId) {
+                                setSelectedEntity(INVALID_ENTITY);
+                            }
+                            ResourceManager::get().setUnsavedChanges(true);
+                            setStatusMessage("Deleted scene from ProjectMeta (entity not destroyed).");
+                        }
                         ImGui::EndPopup();
+                    }
+
+                    // Children: list contained events under the scene
+                    if (open) {
+                        auto fn = em.getComponent<FlowNodeComponent>(nodeId);
+                        if (fn) {
+                            for (int ei = 0; ei < (int)fn->eventSequence.size(); ++ei) {
+                                Entity evt = fn->eventSequence[ei];
+                                if (evt == INVALID_ENTITY) continue;
+
+                                const char* typeLabel = "Unknown";
+                                if (em.getComponent<DialogueComponent>(evt)) typeLabel = "Dialogue";
+                                else if (em.getComponent<ChoiceComponent>(evt)) typeLabel = "Choice";
+                                else if (em.getComponent<DiceRollComponent>(evt)) typeLabel = "Dice Roll";
+
+                                bool isEvtSelected = (currentSelected == evt);
+                                ImGuiTreeNodeFlags leafFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth;
+                                if (isEvtSelected) leafFlags |= ImGuiTreeNodeFlags_Selected;
+
+                                std::string childLabel = std::string(typeLabel) + " (ID: " + std::to_string((unsigned)evt) + ")";
+                                ImGui::TreeNodeEx((void*)(intptr_t)evt, leafFlags, "%s", childLabel.c_str());
+                                if (ImGui::IsItemClicked()) {
+                                    setSelectedEntity(evt);
+                                }
+                            }
+                        }
+                        ImGui::TreePop();
                     }
                 }
 
@@ -329,6 +206,7 @@ void EditorUI::renderFlowTabs() {
                     ImGui::EndPopup();
                 }
 
+                // Removed duplicate flat "Scene Contents" list; tree above shows events per scene.
                 ImGui::EndChild();
             }
             ImGui::EndTabItem();
@@ -339,7 +217,7 @@ void EditorUI::renderFlowTabs() {
 }
 
 void EditorUI::renderSceneTabs() {
-    //Call ScenePanel rendering
+    // Call ScenePanel rendering (HUD overlay handled inside ScenePanel)
     scenePanel.renderScenePanel();
 }
 
@@ -355,16 +233,13 @@ void EditorUI::renderInspectorTabs() {
         // Centralized inspectors: handled inside EntityInspectorPanel.cpp
         renderEntityInspector(selected);
 
-        // Removed duplicate tag list and add/remove component controls.
-        // These are now managed inside renderEntityInspector(...) for consistency.
+        // ...existing code...
     }
     ImGui::End();
 }
 
-
 void EditorUI::renderAssetBrowser() {
     ImGui::Begin("Assets Panel");
-
     ImVec2 panelSize = ImGui::GetContentRegionAvail();
     float leftPaneWidth = panelSize.x * 0.3f;
 

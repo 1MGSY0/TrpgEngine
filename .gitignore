@@ -16,6 +16,7 @@ conanfile.lock
 *.bat
 
 # VS Code
+TODO-minimalEditor.md
 .vscode/
 *.code-workspace
 /*.vcxproj

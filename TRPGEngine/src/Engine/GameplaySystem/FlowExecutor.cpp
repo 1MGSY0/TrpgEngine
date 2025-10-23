@@ -4,6 +4,11 @@
 #include "Engine/EntitySystem/Components/UIButtonComponent.hpp"
 #include "Engine/EntitySystem/Components/FlowNodeComponent.hpp"
 #include "Engine/RenderSystem/SceneManager.hpp"
+// + include Choice/Dice to detect interactive events
+#include "Engine/EntitySystem/Components/ChoiceComponent.hpp"
+#include "Engine/EntitySystem/Components/DiceRollComponent.hpp"
+#include "Engine/EntitySystem/Components/ProjectMetaComponent.hpp"
+#include "Project/ProjectManager.hpp"
 
 FlowExecutor& FlowExecutor::get() {
     static FlowExecutor inst;
@@ -18,6 +23,10 @@ void FlowExecutor::reset() {
 }
 
 void FlowExecutor::tick() {
+    // + In editor, default to the SceneManager-selected node if none is active
+    if (m_activeFlowNode == INVALID_ENTITY) {
+        m_activeFlowNode = SceneManager::get().getCurrentFlowNode();
+    }
     if (m_activeFlowNode == INVALID_ENTITY) return;
 
     auto& em = EntityManager::get();
@@ -50,6 +59,12 @@ bool FlowExecutor::runEvent(Entity event) {
         return handleUIButton(event);
     }
 
+    // Do NOT auto-complete interactive events (let HUD drive them)
+    if (em.hasComponent(event, ComponentType::Choice) ||
+        em.hasComponent(event, ComponentType::DiceRoll)) {
+        return false; // stay on current event until HUD interaction routes/advances
+    }
+
     // Default: complete unknown events immediately
     m_eventCompleted = true;
     return true;
@@ -62,14 +77,41 @@ bool FlowExecutor::handleDialogue(Entity entity) {
 
     if (comp->triggered) {
         comp->triggered = false;
+
+        // If target set, first try in-scene @Event: jump, else scene by name
         if (!comp->targetFlowNode.empty()) {
-            Entity next = findFlowNodeByName(comp->targetFlowNode);
-            if (next != INVALID_ENTITY) {
-                SceneManager::get().setCurrentFlowNode(next);
-                reset();
-                return false; // Wait next frame
+            // In-scene jump: @Event:ID
+            const std::string tag = "@Event:";
+            if (comp->targetFlowNode.rfind(tag, 0) == 0) {
+                try {
+                    Entity jumpTo = (Entity)std::stoull(comp->targetFlowNode.substr(tag.size()));
+                    // find index in current node's eventSequence
+                    auto node = em.getComponent<FlowNodeComponent>(m_activeFlowNode);
+                    if (node) {
+                        for (int i = 0; i < (int)node->eventSequence.size(); ++i) {
+                            if (node->eventSequence[i] == jumpTo) {
+                                // Jump to that event index (no advance increment)
+                                m_currentEventIndex = i;
+                                m_lastEvent = INVALID_ENTITY; // force re-eval next tick
+                                return false;
+                            }
+                        }
+                    }
+                } catch (...) {
+                    // fall back to default advance
+                }
+            } else {
+                // Scene by name
+                Entity next = findFlowNodeByName(comp->targetFlowNode);
+                if (next != INVALID_ENTITY) {
+                    SceneManager::get().setCurrentFlowNode(next);
+                    reset();
+                    return false; // Wait next frame
+                }
             }
         }
+
+        // Default: complete event (advance to next event/scene)
         m_eventCompleted = true;
         return true;
     }
@@ -84,14 +126,37 @@ bool FlowExecutor::handleUIButton(Entity entity) {
 
     if (comp->triggered) {
         comp->triggered = false;
+
+        // First try in-scene event jump via @Event:ID
         if (!comp->targetFlowNode.empty()) {
-            Entity next = findFlowNodeByName(comp->targetFlowNode);
-            if (next != INVALID_ENTITY) {
-                SceneManager::get().setCurrentFlowNode(next);
-                reset();
-                return false;
+            const std::string tag = "@Event:";
+            if (comp->targetFlowNode.rfind(tag, 0) == 0) {
+                try {
+                    Entity jumpTo = (Entity)std::stoull(comp->targetFlowNode.substr(tag.size()));
+                    if (auto node = em.getComponent<FlowNodeComponent>(m_activeFlowNode)) {
+                        for (int i = 0; i < (int)node->eventSequence.size(); ++i) {
+                            if (node->eventSequence[i] == jumpTo) {
+                                m_currentEventIndex = i;
+                                m_lastEvent = INVALID_ENTITY; // force re-eval next tick
+                                return false;
+                            }
+                        }
+                    }
+                } catch (...) {
+                    // fall through to scene-name/default
+                }
+            } else {
+                // Scene by name
+                Entity next = findFlowNodeByName(comp->targetFlowNode);
+                if (next != INVALID_ENTITY) {
+                    SceneManager::get().setCurrentFlowNode(next);
+                    reset();
+                    return false;
+                }
             }
         }
+
+        // Default: complete this event (advance to next)
         m_eventCompleted = true;
         return true;
     }
@@ -107,11 +172,33 @@ void FlowExecutor::advanceEvent() {
     m_currentEventIndex++;
 
     if (m_currentEventIndex >= flow->eventSequence.size()) {
-        if (flow->nextNode != INVALID_ENTITY) {
-            SceneManager::get().setCurrentFlowNode(flow->nextNode);
-            reset();
+        // Prefer explicit Next Node
+        Entity nextScene = (flow->nextNode != INVALID_ENTITY) ? (Entity)flow->nextNode : INVALID_ENTITY;
+
+        // If no Next Node, fall back to next scene in ProjectMeta order
+        if (nextScene == INVALID_ENTITY) {
+            Entity metaEntity = ProjectManager::getProjectMetaEntity();
+            auto metaBase = em.getComponent(metaEntity, ComponentType::ProjectMetadata);
+            if (metaBase) {
+                auto meta = std::static_pointer_cast<ProjectMetaComponent>(metaBase);
+                for (size_t i = 0; i < meta->sceneNodes.size(); ++i) {
+                    if (meta->sceneNodes[i] == m_activeFlowNode) {
+                        if (i + 1 < meta->sceneNodes.size()) {
+                            nextScene = meta->sceneNodes[i + 1];
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (nextScene != INVALID_ENTITY) {
+            SceneManager::get().setCurrentFlowNode(nextScene);
+            reset(); // bind to new scene on next tick
         } else {
-            m_activeFlowNode = INVALID_ENTITY; // End
+            // End of flow
+            m_activeFlowNode = INVALID_ENTITY;
+            m_currentEventIndex = 0;
         }
     }
 }
