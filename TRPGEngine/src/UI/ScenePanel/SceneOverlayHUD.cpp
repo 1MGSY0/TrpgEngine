@@ -4,7 +4,7 @@
 #include "UI/ScenePanel/SceneOverlayHUD.hpp"
 #include <random>
 #include <unordered_map>
-#include <algorithm> // std::max
+#include <algorithm> 
 #include "UI/EditorUI.hpp"
 #include "Engine/EntitySystem/EntityManager.hpp"
 #include "Engine/EntitySystem/Components/FlowNodeComponent.hpp"

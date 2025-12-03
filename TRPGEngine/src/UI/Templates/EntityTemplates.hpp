@@ -3,6 +3,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <functional>
 #include "Engine/EntitySystem/Components/Transform2DComponent.hpp"
 #include "Engine/EntitySystem/Components/CharacterComponent.hpp"
 #include "Engine/EntitySystem/Components/DialogueComponent.hpp"
@@ -12,6 +13,7 @@
 #include "Engine/EntitySystem/Components/UIButtonComponent.hpp"
 #include "Engine/EntitySystem/EntityManager.hpp"
 #include "Engine/EntitySystem/Entity.hpp"
+#include "Engine/EntitySystem/Components/BackgroundComponent.hpp"
 
 struct EntityTemplate {
     std::string name;
@@ -66,6 +68,13 @@ inline const std::unordered_map<EntityType, EntityTemplate>& getEntityTemplateMa
                 [] { return std::make_shared<Transform2DComponent>(); },
                 [] { return std::make_shared<DiceRollComponent>(); }
             } }
+        },
+        {
+            EntityType::Background,
+            { "Background", EntityType::Background, {
+                [] { return std::make_shared<Transform2DComponent>(); },
+                [] { return std::make_shared<BackgroundComponent>(); }
+            } }
         }
     };
     return templates;
@@ -73,11 +82,12 @@ inline const std::unordered_map<EntityType, EntityTemplate>& getEntityTemplateMa
 
 inline std::vector<std::pair<EntityType, std::string>> getEntityTypeNames() {
     return {
-        { EntityType::FlowNode,  "Flow Node" },
+        { EntityType::FlowNode,  "Scene" },
         { EntityType::Dialogue,  "Dialogue" },
         { EntityType::Character, "Character" },
         { EntityType::UIButton,  "UI Button" },
         { EntityType::Choice,    "Choice" },
-        { EntityType::DiceRoll,  "Dice Roll" }
+        { EntityType::DiceRoll,  "Dice Roll" },
+        { EntityType::Background,"Background" }
     };
 }

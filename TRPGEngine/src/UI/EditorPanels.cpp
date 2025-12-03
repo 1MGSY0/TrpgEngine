@@ -27,6 +27,9 @@
 #include "Engine/EntitySystem/Components/DialogueComponent.hpp"
 #include "Engine/EntitySystem/Components/ChoiceComponent.hpp"
 #include "Engine/EntitySystem/Components/DiceRollComponent.hpp"
+#include "Engine/EntitySystem/Components/BackgroundComponent.hpp"
+#include "Engine/EntitySystem/Components/ModelComponent.hpp"
+#include "Engine/EntitySystem/Components/CharacterComponent.hpp"
 
 #include "UI/FlowPanel/FlowCanvas.hpp"
 #include "UI/FlowPanel/FlowEventsPanel.hpp"
@@ -158,6 +161,7 @@ void EditorUI::renderFlowTabs() {
                     if (open) {
                         auto fn = em.getComponent<FlowNodeComponent>(nodeId);
                         if (fn) {
+                            // Events (existing)
                             for (int ei = 0; ei < (int)fn->eventSequence.size(); ++ei) {
                                 Entity evt = fn->eventSequence[ei];
                                 if (evt == INVALID_ENTITY) continue;
@@ -175,6 +179,51 @@ void EditorUI::renderFlowTabs() {
                                 ImGui::TreeNodeEx((void*)(intptr_t)evt, leafFlags, "%s", childLabel.c_str());
                                 if (ImGui::IsItemClicked()) {
                                     setSelectedEntity(evt);
+                                }
+                            }
+
+                            // Backgrounds
+                            if (!fn->backgroundEntities.empty()) {
+                                ImGui::Separator();
+                                ImGui::TextDisabled("Background");
+                                for (Entity bg : fn->backgroundEntities) {
+                                    if (bg == INVALID_ENTITY) continue;
+                                    bool isSel = (currentSelected == bg);
+                                    ImGuiTreeNodeFlags leafFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth;
+                                    if (isSel) leafFlags |= ImGuiTreeNodeFlags_Selected;
+                                    std::string label = "Background (ID: " + std::to_string((unsigned)bg) + ")";
+                                    ImGui::TreeNodeEx((void*)(intptr_t)bg, leafFlags, "%s", label.c_str());
+                                    if (ImGui::IsItemClicked()) setSelectedEntity(bg);
+                                }
+                            }
+
+                            // Objects
+                            if (!fn->objectLayer.empty()) {
+                                ImGui::Separator();
+                                ImGui::TextDisabled("Objects");
+                                for (Entity ob : fn->objectLayer) {
+                                    if (ob == INVALID_ENTITY) continue;
+                                    bool isSel = (currentSelected == ob);
+                                    ImGuiTreeNodeFlags leafFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth;
+                                    if (isSel) leafFlags |= ImGuiTreeNodeFlags_Selected;
+                                    std::string label = "Object (ID: " + std::to_string((unsigned)ob) + ")";
+                                    ImGui::TreeNodeEx((void*)(intptr_t)ob, leafFlags, "%s", label.c_str());
+                                    if (ImGui::IsItemClicked()) setSelectedEntity(ob);
+                                }
+                            }
+
+                            // Characters
+                            if (!fn->characters.empty()) {
+                                ImGui::Separator();
+                                ImGui::TextDisabled("Characters");
+                                for (Entity ch : fn->characters) {
+                                    if (ch == INVALID_ENTITY) continue;
+                                    bool isSel = (currentSelected == ch);
+                                    ImGuiTreeNodeFlags leafFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth;
+                                    if (isSel) leafFlags |= ImGuiTreeNodeFlags_Selected;
+                                    std::string label = "Character (ID: " + std::to_string((unsigned)ch) + ")";
+                                    ImGui::TreeNodeEx((void*)(intptr_t)ch, leafFlags, "%s", label.c_str());
+                                    if (ImGui::IsItemClicked()) setSelectedEntity(ch);
                                 }
                             }
                         }

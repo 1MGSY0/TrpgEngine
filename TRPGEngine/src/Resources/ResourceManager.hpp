@@ -27,6 +27,9 @@ public:
 
     void refreshFolder();
 
+    static std::string ingestBackgroundAsset(const std::string& sourcePath);
+    std::filesystem::path getAssetsRoot() const;
+
 private:
     ResourceManager() = default;
     bool m_unsaved = false;

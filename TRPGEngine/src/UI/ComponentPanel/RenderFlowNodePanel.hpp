@@ -20,6 +20,7 @@
 #include "Project/ProjectManager.hpp"
 #include "Resources/ResourceManager.hpp"
 #include "Engine/EntitySystem/ComponentRegistry.hpp"
+#include "Engine/RenderSystem/SceneManager.hpp"
 
 inline void renderFlowNodeInspector(const std::shared_ptr<FlowNodeComponent>& comp) {
     auto& em = EntityManager::get();
@@ -155,15 +156,45 @@ inline void renderFlowNodeInspector(const std::shared_ptr<FlowNodeComponent>& co
         ImGui::SameLine();
         if (ImGui::SmallButton((std::string("Remove##bg") + std::to_string(bgId)).c_str())) {
             comp->backgroundEntities.erase(comp->backgroundEntities.begin() + i);
+            ResourceManager::get().setUnsavedChanges(true);
+            // Prompt re-render for current scene
+            if (self != INVALID_ENTITY) SceneManager::get().setCurrentFlowNode(self);
             i--;
         }
     }
-    ImGui::TextDisabled("Drag & drop Background entity here.");
+
+    // Quickly attach a Background entity via picker (unique)
+    if (ImGui::Button("Attach Background...")) {
+        ImGui::OpenPopup("AttachBackgroundPicker");
+    }
+    if (ImGui::BeginPopup("AttachBackgroundPicker")) {
+        // List all entities with BackgroundComponent
+        for (Entity e : em.getAllEntities()) {
+            if (!em.getComponent<BackgroundComponent>(e)) continue;
+            bool already = std::find(comp->backgroundEntities.begin(), comp->backgroundEntities.end(), e) != comp->backgroundEntities.end();
+            if (ImGui::Selectable((std::string("Entity #") + std::to_string((unsigned)e) + (already ? " (attached)" : "")).c_str())) {
+                // Enforce unique background per scene
+                comp->backgroundEntities.clear();
+                comp->backgroundEntities.push_back(e);
+                ResourceManager::get().setUnsavedChanges(true);
+                if (self != INVALID_ENTITY) SceneManager::get().setCurrentFlowNode(self);
+            }
+        }
+        ImGui::EndPopup();
+    }
+
+    ImGui::TextDisabled("Drag & drop Background entity here (unique).");
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_FILE")) {
             Entity dropped = *(Entity*)payload->Data;
-            if (em.getComponent<BackgroundComponent>(dropped))
+            if (em.getComponent<BackgroundComponent>(dropped)) {
+                // Enforce unique background per scene
+                comp->backgroundEntities.clear();
                 comp->backgroundEntities.push_back(dropped);
+                ResourceManager::get().setUnsavedChanges(true);
+                // Prompt re-render for current scene
+                if (self != INVALID_ENTITY) SceneManager::get().setCurrentFlowNode(self);
+            }
         }
         ImGui::EndDragDropTarget();
     }

@@ -1,5 +1,7 @@
 #include "ResourceManager.hpp"
 #include "UI/EditorUI.hpp"
+#include "Project/ProjectManager.hpp"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -126,6 +128,96 @@ bool ResourceManager::importFileAsset(const std::string& sourcePath, FileAssetTy
     }
 
     return true;
+}
+
+namespace {
+std::filesystem::path resolveProjectRoot() {
+    std::string projStr = ProjectManager::getCurrentProjectPath();
+    std::filesystem::path proj = projStr;
+    std::error_code ec;
+
+    // 1) If project path is configured, use that.
+    if (!proj.empty()) {
+        if (!proj.is_absolute())
+            proj = std::filesystem::current_path() / proj;
+
+        proj = std::filesystem::weakly_canonical(proj, ec);
+        if (!ec) {
+            std::filesystem::path root = proj.parent_path();
+            if (!root.empty()) {
+                return root;
+            }
+        }
+    }
+    std::filesystem::path dir = std::filesystem::current_path();
+    std::filesystem::path best;
+
+    for (int i = 0; i < 8 && !dir.empty(); ++i) {
+        if (std::filesystem::exists(dir / "Runtime", ec) &&
+            std::filesystem::exists(dir / "Runtime" / "Assets", ec)) {
+            best = dir; // keep updating; last one is highest
+        }
+        dir = dir.parent_path();
+    }
+
+    return best;
+}
+} // namespace
+
+std::string ResourceManager::ingestBackgroundAsset(const std::string& sourcePath) {
+	if (sourcePath.empty()) return {};
+	std::filesystem::path src(sourcePath);
+	std::filesystem::path projectRoot = resolveProjectRoot();
+	if (projectRoot.empty()) return sourcePath;
+
+	std::error_code ec;
+	std::filesystem::path backgroundsDir = projectRoot / "Runtime" / "Assets" / "Backgrounds";
+
+	if (!src.is_absolute()) {
+		std::filesystem::path abs = projectRoot / src;
+		if (std::filesystem::exists(abs, ec)) {
+			return src.lexically_normal().generic_string();
+		}
+		std::filesystem::path fallback = backgroundsDir / src.filename();
+		if (std::filesystem::exists(fallback, ec)) {
+			auto rel = std::filesystem::relative(fallback, projectRoot, ec);
+			if (!ec) return rel.lexically_normal().generic_string();
+		}
+		return src.generic_string();
+	}
+
+	if (!std::filesystem::exists(src, ec) || !std::filesystem::is_regular_file(src, ec)) return sourcePath;
+
+	std::string ext = src.extension().string();
+	std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) {
+		return static_cast<char>(std::tolower(c));
+	});
+	if (ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".bmp") return sourcePath;
+
+	std::filesystem::create_directories(backgroundsDir, ec);
+	if (ec) return sourcePath;
+
+	std::filesystem::path dest = backgroundsDir / src.filename();
+	if (!std::filesystem::equivalent(src, dest, ec)) {
+		std::filesystem::copy_file(src, dest, std::filesystem::copy_options::overwrite_existing, ec);
+		if (ec) return sourcePath;
+	}
+
+	auto relative = std::filesystem::relative(dest, projectRoot, ec);
+	if (ec) return sourcePath;
+
+	return relative.lexically_normal().generic_string();
+}
+
+std::filesystem::path ResourceManager::getAssetsRoot() const {
+    std::error_code ec;
+    std::filesystem::path cwd = std::filesystem::current_path();
+    std::filesystem::path assetsRoot = cwd;
+
+    assetsRoot = std::filesystem::weakly_canonical(assetsRoot, ec);
+    std::cout << "[ResourceManager] Resolved assetsRoot: " << assetsRoot << "\n";
+
+    return assetsRoot;
 }
 
 
